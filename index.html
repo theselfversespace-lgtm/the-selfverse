@@ -1255,6 +1255,27 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
 }
 </style>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+/* =========================
+   FIREBASE ONLINE APPOINTMENTS
+========================= */
+const firebaseConfig = {
+    apiKey: "AIzaSyDiv5ot4ZJvbtmax6TQiFcrFgemHn8gx00",
+    authDomain: "the-selfverse.firebaseapp.com",
+    projectId: "the-selfverse",
+    storageBucket: "the-selfverse.firebasestorage.app",
+    messagingSenderId: "280046558062",
+    appId: "1:280046558062:web:5d17eb2311fc600adabf7f",
+    measurementId: "G-24ZG7Z0VNX"
+};
+
+firebase.initializeApp(firebaseConfig);
+const selfverseDb = firebase.firestore();
+const APPOINTMENT_COLLECTION = "appointments";
+</script>
+
 <script>
 /* =========================
    SECURE COUNSELLOR PORTAL
@@ -1268,6 +1289,16 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
    for a prototype/local website. Real security requires a server.
 */
 const COUNSELLOR_PASSWORD = "SELFVERSE2026";
+
+/*
+   ONLINE APPOINTMENTS
+   Appointments are stored in Cloud Firestore so they can be
+   viewed from another phone/computer.
+*/
+let remoteAppointments = [];
+let remoteReady = false;
+let appointmentUnsubscribe = null;
+
 
 let counsellorPortalUnlocked = false;
 let lastKnownAppointmentCount =
@@ -1386,9 +1417,13 @@ function showCounsellorNotification(appointment){
     updateNotificationCount();
 }
 
+function getCurrentAppointments(){
+    if(remoteReady) return remoteAppointments;
+    return JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
+}
+
 function updateNotificationCount(){
-    const appointments =
-        JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
+    const appointments = getCurrentAppointments();
 
     const unread =
         appointments.filter(function(item){
@@ -1399,8 +1434,7 @@ function updateNotificationCount(){
 }
 
 function markAppointmentSeen(id){
-    const appointments =
-        JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
+    const appointments = getCurrentAppointments();
 
     const updated =
         appointments.map(function(item){
@@ -1410,11 +1444,15 @@ function markAppointmentSeen(id){
             return item;
         });
 
-    localStorage.setItem(
-        "selfverseAppointments",
-        JSON.stringify(updated)
-    );
+    if(remoteReady){
+        selfverseDb.collection(APPOINTMENT_COLLECTION).doc(String(id)).update({status: "Seen"})
+            .catch(function(){
+                alert("Could not update the appointment online. Please check your internet connection.");
+            });
+        return;
+    }
 
+    localStorage.setItem("selfverseAppointments", JSON.stringify(updated));
     renderAppointments();
     updateNotificationCount();
 }
@@ -1425,8 +1463,7 @@ function renderAppointments(){
 
     if(!list) return;
 
-    const appointments =
-        JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
+    const appointments = getCurrentAppointments();
 
     if(!appointments.length){
         list.innerHTML =
@@ -1509,9 +1546,21 @@ function clearAllAppointments(){
         return;
     }
 
+    if(remoteReady){
+        selfverseDb.collection(APPOINTMENT_COLLECTION).get()
+            .then(function(snapshot){
+                const deletes = [];
+                snapshot.forEach(function(doc){ deletes.push(doc.ref.delete()); });
+                return Promise.all(deletes);
+            })
+            .catch(function(){
+                alert("Could not clear the online appointments.");
+            });
+        return;
+    }
+
     localStorage.removeItem("selfverseAppointments");
     localStorage.removeItem("selfverseLastAppointment");
-
     renderAppointments();
     updateNotificationCount();
 }
@@ -1566,52 +1615,87 @@ document.addEventListener("keydown", function(event){
     }
 });
 
-/* Detect a new appointment while the secure dashboard is open */
+/* =========================
+   FIRESTORE ONLINE APPOINTMENT SYSTEM
+========================= */
+
+function loadRemoteAppointments(showNotifications){
+    if(appointmentUnsubscribe){
+        appointmentUnsubscribe();
+        appointmentUnsubscribe = null;
+    }
+
+    return new Promise(function(resolve){
+        appointmentUnsubscribe = selfverseDb.collection(APPOINTMENT_COLLECTION)
+            .onSnapshot(function(snapshot){
+                const previous = remoteAppointments || [];
+                const previousIds = previous.map(function(x){ return String(x.id); });
+
+                remoteAppointments = [];
+                snapshot.forEach(function(doc){
+                    remoteAppointments.push(doc.data());
+                });
+
+                remoteAppointments.sort(function(a,b){ return Number(b.id) - Number(a.id); });
+                remoteReady = true;
+
+                if(showNotifications && counsellorPortalUnlocked){
+                    remoteAppointments.forEach(function(item){
+                        if(!previousIds.includes(String(item.id))){
+                            showCounsellorNotification(item);
+                        }
+                    });
+                }
+
+                renderAppointments();
+                updateNotificationCount();
+                resolve(true);
+            }, function(error){
+                console.error("Firestore appointment listener error:", error);
+                remoteReady = false;
+                resolve(false);
+            });
+    });
+}
+
+function submitAppointmentRemotely(appointment){
+    return selfverseDb.collection(APPOINTMENT_COLLECTION)
+        .doc(String(appointment.id))
+        .set(appointment)
+        .then(function(){ return true; })
+        .catch(function(error){
+            console.error("Firestore appointment submit error:", error);
+            return false;
+        });
+}
+
+/* Keep local fallback notifications for same-browser use. */
 window.addEventListener("storage", function(event){
+    if(remoteReady || event.key !== "selfverseAppointments") return;
 
-    if(event.key !== "selfverseAppointments") return;
-
-    const appointments =
-        JSON.parse(event.newValue || "[]");
-
+    const appointments = JSON.parse(event.newValue || "[]");
     if(appointments.length > lastKnownAppointmentCount){
-
-        const newest =
-            appointments[appointments.length - 1];
-
-        showCounsellorNotification(newest);
+        showCounsellorNotification(appointments[appointments.length - 1]);
     }
-
     lastKnownAppointmentCount = appointments.length;
-
-    if(counsellorPortalUnlocked){
-        renderAppointments();
-    }
+    if(counsellorPortalUnlocked) renderAppointments();
 });
 
-/* Keep dashboard current if the counsellor has it open */
-setInterval(function(){
-
-    if(!counsellorPortalUnlocked) return;
-
-    const appointments =
-        JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
-
-    if(appointments.length !== lastKnownAppointmentCount){
-
-        if(appointments.length > lastKnownAppointmentCount){
-            showCounsellorNotification(
-                appointments[appointments.length - 1]
-            );
-        }
-
-        lastKnownAppointmentCount =
-            appointments.length;
-
-        renderAppointments();
+/* First online sync after unlocking. Firestore then keeps the dashboard live. */
+const originalUnlockCounsellorPortal = unlockCounsellorPortal;
+unlockCounsellorPortal = function(){
+    originalUnlockCounsellorPortal();
+    if(counsellorPortalUnlocked){
+        loadRemoteAppointments(false).then(function(ok){
+            const notice = document.getElementById("dashboardNotice");
+            if(notice){
+                notice.textContent = ok
+                    ? "☁️ Online appointments are connected. This dashboard can receive requests from other phones."
+                    : "⚠️ Online appointment connection failed. Check your Firebase setup and Firestore rules.";
+            }
+        });
     }
-
-}, 1500);
+};
 </script>
 
 <!-- =========================
@@ -1709,39 +1793,21 @@ document
         status: "New"
     };
 
-    /*
-       Site-only appointment system:
-       The request is saved on the website/browser and appears
-       in the secure counsellor dashboard.
-    */
-    const appointments =
-        JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
-
-    appointments.push(appointment);
-
-    localStorage.setItem(
-        "selfverseAppointments",
-        JSON.stringify(appointments)
-    );
-
-    localStorage.setItem(
-        "selfverseLastAppointment",
-        JSON.stringify(appointment)
-    );
-
-    const toast =
-        document.getElementById("toast");
-
-    toast.textContent =
-        "Appointment submitted successfully through THE SELFVERSE site.";
-
+    /* Send directly to the shared Firestore database. */
+    const toast = document.getElementById("toast");
+    toast.textContent = "Sending appointment securely...";
     toast.classList.add("show");
 
-    document.getElementById("appointmentForm").reset();
+    submitAppointmentRemotely(appointment).then(function(ok){
+        if(!ok) throw new Error("Remote appointment failed");
 
-    setTimeout(function() {
-        toast.classList.remove("show");
-    }, 3500);
+        toast.textContent = "Appointment submitted successfully through THE SELFVERSE site.";
+        document.getElementById("appointmentForm").reset();
+        setTimeout(function(){ toast.classList.remove("show"); }, 3500);
+    }).catch(function(){
+        toast.textContent = "Could not send the appointment online. Please try again.";
+        setTimeout(function(){ toast.classList.remove("show"); }, 4500);
+    });
 
 });
 
