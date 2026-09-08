@@ -43,7 +43,7 @@ nav{
   display:flex;justify-content:space-between;align-items:center;
   padding:17px 7%;
 }
-.logo{
+.logo{cursor:default;user-select:none;-webkit-user-select:none;
   font-family:"Playfair Display",serif;font-size:28px;font-weight:700;
   letter-spacing:2px;color:var(--ink)
 }
@@ -208,7 +208,7 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
 
 <nav>
 
-    <div class="logo">
+    <div class="logo" id="selfverseLogo" role="button" tabindex="0" aria-label="THE SELFVERSE">
         THE <span>SELFVERSE</span>
     </div>
 
@@ -1517,6 +1517,38 @@ function clearAllAppointments(){
 }
 
 /* Hidden access shortcut — not shown in the public navigation */
+/* Phone access: tap the THE SELFVERSE logo 5 times quickly.
+   The login screen opens first; private information stays hidden until
+   the correct counsellor password is entered. */
+let mobileLogoTapCount = 0;
+let mobileLogoTapTimer = null;
+
+function handleMobileLogoTap(){
+    mobileLogoTapCount += 1;
+
+    clearTimeout(mobileLogoTapTimer);
+    mobileLogoTapTimer = setTimeout(function(){
+        mobileLogoTapCount = 0;
+    }, 1500);
+
+    if(mobileLogoTapCount >= 5){
+        mobileLogoTapCount = 0;
+        clearTimeout(mobileLogoTapTimer);
+        openCounsellorPortal();
+    }
+}
+
+const selfverseLogo = document.getElementById("selfverseLogo");
+if(selfverseLogo){
+    selfverseLogo.addEventListener("click", handleMobileLogoTap);
+    selfverseLogo.addEventListener("keydown", function(event){
+        if(event.key === "Enter" || event.key === " "){
+            event.preventDefault();
+            handleMobileLogoTap();
+        }
+    });
+}
+
 document.addEventListener("keydown", function(event){
     if(event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "c"){
         event.preventDefault();
