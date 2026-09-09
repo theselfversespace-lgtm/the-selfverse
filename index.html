@@ -924,12 +924,19 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
             <div class="secure-lock">🔐</div>
             <span class="secure-label">PRIVATE ACCESS</span>
             <h2>Counsellor Portal</h2>
-            <p>Enter the counsellor password to view appointment requests.</p>
+            <p>Sign in with the private counsellor account to view appointment requests.</p>
+
+            <input
+                type="email"
+                id="counsellorEmail"
+                placeholder="Counsellor email"
+                autocomplete="username"
+            >
 
             <input
                 type="password"
                 id="counsellorPassword"
-                placeholder="Enter password"
+                placeholder="Counsellor password"
                 autocomplete="current-password"
             >
 
@@ -940,7 +947,7 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
             </button>
 
             <small class="secure-note">
-                This portal is hidden from normal website navigation.
+                This portal is hidden from normal website navigation. Only the Firebase counsellor account can read appointments.
             </small>
         </div>
 
@@ -1255,8 +1262,9 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
 }
 </style>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 /* =========================
    FIREBASE ONLINE APPOINTMENTS
@@ -1272,8 +1280,16 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+// Load Authentication before Firestore so the signed-in counsellor is
+// available to Firestore security rules.
+const selfverseAuth = firebase.auth();
 const selfverseDb = firebase.firestore();
 const APPOINTMENT_COLLECTION = "appointments";
+console.log("THE SELFVERSE Firebase initialized:", {
+    authAvailable: typeof firebase.auth === "function",
+    firestoreAvailable: typeof firebase.firestore === "function",
+    projectId: firebaseConfig.projectId
+});
 </script>
 
 <script>
@@ -1282,13 +1298,10 @@ const APPOINTMENT_COLLECTION = "appointments";
 ========================= */
 
 /*
-   CHANGE THIS PASSWORD BEFORE DEPLOYING.
-
-   IMPORTANT:
-   A password inside a standalone HTML file is suitable only
-   for a prototype/local website. Real security requires a server.
+   COUNSELLOR AUTHENTICATION
+   The counsellor must use a Firebase Authentication email/password account.
+   Do not store a real password in this HTML file.
 */
-const COUNSELLOR_PASSWORD = "SELFVERSE2026";
 
 /*
    ONLINE APPOINTMENTS
@@ -1324,22 +1337,36 @@ function closeCounsellorPortal(){
 }
 
 function unlockCounsellorPortal(){
-    const password =
-        document.getElementById("counsellorPassword").value;
+    const email = document.getElementById("counsellorEmail").value.trim();
+    const password = document.getElementById("counsellorPassword").value;
 
-    if(password !== COUNSELLOR_PASSWORD){
-        alert("Incorrect counsellor password.");
+    if(!email || !password){
+        alert("Enter the counsellor email and password.");
         return;
     }
 
-    counsellorPortalUnlocked = true;
-
-    document.getElementById("loginPanel").style.display = "none";
-    document.getElementById("dashboardPanel").style.display = "block";
-
-    renderAppointments();
-    updateNotificationCount();
-    loadNotificationNumbers();
+    selfverseAuth.signInWithEmailAndPassword(email, password)
+        .then(function(){
+            counsellorPortalUnlocked = true;
+            document.getElementById("loginPanel").style.display = "none";
+            document.getElementById("dashboardPanel").style.display = "block";
+            renderAppointments();
+            updateNotificationCount();
+            loadNotificationNumbers();
+            return loadRemoteAppointments(false);
+        })
+        .then(function(ok){
+            const notice = document.getElementById("dashboardNotice");
+            if(notice){
+                notice.textContent = ok
+                    ? "☁️ Secure online appointments are connected."
+                    : "⚠️ Could not connect to online appointments. Check your Firebase setup and Firestore rules.";
+            }
+        })
+        .catch(function(error){
+            console.error("Counsellor sign-in error:", error);
+            alert("Secure login failed. Check the counsellor email and password.");
+        });
 }
 
 function lockCounsellorPortal(){
@@ -1348,6 +1375,14 @@ function lockCounsellorPortal(){
     document.getElementById("dashboardPanel").style.display = "none";
     document.getElementById("loginPanel").style.display = "block";
     document.getElementById("counsellorPassword").value = "";
+    document.getElementById("counsellorEmail").value = "";
+    if(appointmentUnsubscribe){
+        appointmentUnsubscribe();
+        appointmentUnsubscribe = null;
+    }
+    remoteAppointments = [];
+    remoteReady = false;
+    selfverseAuth.signOut().catch(function(){});
 }
 
 function requestCounsellorNotifications(){
@@ -1681,21 +1716,6 @@ window.addEventListener("storage", function(event){
     if(counsellorPortalUnlocked) renderAppointments();
 });
 
-/* First online sync after unlocking. Firestore then keeps the dashboard live. */
-const originalUnlockCounsellorPortal = unlockCounsellorPortal;
-unlockCounsellorPortal = function(){
-    originalUnlockCounsellorPortal();
-    if(counsellorPortalUnlocked){
-        loadRemoteAppointments(false).then(function(ok){
-            const notice = document.getElementById("dashboardNotice");
-            if(notice){
-                notice.textContent = ok
-                    ? "☁️ Online appointments are connected. This dashboard can receive requests from other phones."
-                    : "⚠️ Online appointment connection failed. Check your Firebase setup and Firestore rules.";
-            }
-        });
-    }
-};
 </script>
 
 <!-- =========================
