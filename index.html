@@ -1744,36 +1744,53 @@ document
     observer.observe(element);
 
 });
-
-
-// 📱 Hidden 5-tap counsellor portal shortcut
+// 🔐 Hidden Counsellor Portal Shortcuts
 (function () {
+
+    // 📱 Phone: tap THE SELFVERSE logo 5 times
     const logo = document.getElementById("selfverseLogo");
 
-    if (!logo) return;
+    if (logo) {
+        let tapCount = 0;
+        let tapTimer = null;
 
-    let tapCount = 0;
-    let tapTimer = null;
+        logo.addEventListener("click", function () {
+            tapCount++;
 
-    logo.addEventListener("click", function () {
-        tapCount++;
-
-        clearTimeout(tapTimer);
-
-        tapTimer = setTimeout(function () {
-            tapCount = 0;
-        }, 1200);
-
-        if (tapCount >= 5) {
-            tapCount = 0;
             clearTimeout(tapTimer);
+
+            tapTimer = setTimeout(function () {
+                tapCount = 0;
+            }, 1200);
+
+            if (tapCount >= 5) {
+                tapCount = 0;
+                clearTimeout(tapTimer);
+
+                if (typeof openCounsellorPortal === "function") {
+                    openCounsellorPortal();
+                }
+            }
+        });
+    }
+
+    // 💻 Laptop: Ctrl + Shift + C
+    document.addEventListener("keydown", function (event) {
+
+        if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "c") {
+            event.preventDefault();
+            event.stopPropagation();
 
             if (typeof openCounsellorPortal === "function") {
                 openCounsellorPortal();
             }
         }
+
     });
+
 })();
+
+
 </script>
 </body>
 </html>
