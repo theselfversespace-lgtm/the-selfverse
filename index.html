@@ -1746,7 +1746,36 @@ document
 });
 
 
-</script>
+// 📱 Hidden 5-tap counsellor portal shortcut
+(function () {
+    let tapCount = 0;
+    let tapTimer = null;
 
+    document.addEventListener("click", function (event) {
+        const element = event.target.closest("a, button, div, span, h1, h2, h3");
+
+        if (!element) return;
+
+        // Detect the THE SELFVERSE logo/name
+        if (element.textContent.trim() !== "THE SELFVERSE") return;
+
+        tapCount++;
+
+        clearTimeout(tapTimer);
+
+        tapTimer = setTimeout(function () {
+            tapCount = 0;
+        }, 1200);
+
+        if (tapCount === 5) {
+            tapCount = 0;
+            clearTimeout(tapTimer);
+
+            if (typeof openCounsellorPortal === "function") {
+                openCounsellorPortal();
+            }
+        }
+    });
+})();
 </body>
 </html>
