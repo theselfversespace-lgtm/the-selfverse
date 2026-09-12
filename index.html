@@ -971,6 +971,8 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
                 🔔 New appointment notifications appear here for the counsellor only.
             </div>
 
+            <button class="btn btn-primary" type="button" onclick="enablePhoneNotifications()" style="margin:12px 0 18px;">📱 Enable Android phone notifications</button>
+
             <div class="registered-counsellor-card">
                 <span class="secure-label">REGISTERED COUNSELLOR</span>
                 <h3>Gavriella Vaiz</h3>
@@ -1265,6 +1267,7 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script>
 /* =========================
    FIREBASE ONLINE APPOINTMENTS
@@ -1284,7 +1287,10 @@ firebase.initializeApp(firebaseConfig);
 // available to Firestore security rules.
 const selfverseAuth = firebase.auth();
 const selfverseDb = firebase.firestore();
+const selfverseMessaging = firebase.messaging();
 const APPOINTMENT_COLLECTION = "appointments";
+const NOTIFICATION_TOKEN_COLLECTION = "notificationTokens";
+const VAPID_KEY = "BHu0ozeWFK_Zj8D-1v_C0-y7xA2_PNAZpBkYfFytoTWScV095VDpGWtHxwFMZ-18UlO4N-2hyOrzAbi-sg-r0e0";
 console.log("THE SELFVERSE Firebase initialized:", {
     authAvailable: typeof firebase.auth === "function",
     firestoreAvailable: typeof firebase.firestore === "function",
@@ -1386,273 +1392,72 @@ function lockCounsellorPortal(){
 }
 
 function requestCounsellorNotifications(){
+    return enablePhoneNotifications();
+}
+
+async function enablePhoneNotifications(){
+    const notice = document.getElementById("dashboardNotice");
+
+    if(!selfverseAuth.currentUser){
+        alert("Please sign in to the counsellor dashboard first.");
+        return;
+    }
+
     if(!("Notification" in window)){
-        alert("This browser does not support notifications.");
+        alert("This Android browser does not support web notifications.");
         return;
     }
 
-    Notification.requestPermission().then(function(permission){
-        const notice =
-            document.getElementById("dashboardNotice");
+    try{
+        const registration = await navigator.serviceWorker.register("firebase-messaging-sw.js", {
+            scope: "./"
+        });
 
-        if(permission === "granted"){
-            notice.textContent =
-                "🔔 Site notifications are enabled on this device. Saved phone numbers are notification recipients for a future SMS/push service.";
-        }else{
-            notice.textContent =
-                "🔕 Notifications were not enabled. You can enable them in browser settings.";
+        const permission = await Notification.requestPermission();
+        if(permission !== "granted"){
+            notice.textContent = "🔕 Notification permission was not granted. Enable notifications for THE SELFVERSE in your browser settings.";
+            return;
         }
-    });
-}
 
-function loadNotificationNumbers(){
-    const numbers = JSON.parse(localStorage.getItem("selfverseNotificationNumbers") || "[]");
-    for(let i=1;i<=10;i++){
-        const input = document.getElementById("notificationNumber" + i);
-        if(input) input.value = numbers[i-1] || "";
+        const token = await selfverseMessaging.getToken({
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: registration
+        });
+
+        if(!token){
+            throw new Error("Firebase did not return a notification token.");
+        }
+
+        await selfverseDb.collection(NOTIFICATION_TOKEN_COLLECTION).doc(token).set({
+            token: token,
+            createdAt: new Date().toISOString(),
+            userUid: selfverseAuth.currentUser.uid,
+            platform: /Android/i.test(navigator.userAgent) ? "Android" : "Web"
+        });
+
+        notice.textContent = "🔔 Android phone notifications are enabled. You will receive new appointment alerts when the notification service is deployed.";
+    }catch(error){
+        console.error("FCM notification setup error:", error);
+        notice.textContent = "⚠️ Could not enable phone notifications. Check browser notification permission and Firebase Messaging setup.";
+        alert("Could not enable phone notifications. Please allow notifications and try again.");
     }
 }
 
-function saveNotificationNumbers(){
-    const numbers = [];
-    for(let i=1;i<=10;i++){
-        const input = document.getElementById("notificationNumber" + i);
-        const value = input ? input.value.trim() : "";
-        if(value){
-            numbers.push(value);
-        }
+selfverseMessaging.onMessage(function(payload){
+    console.log("Foreground FCM message:", payload);
+    const notification = payload.notification || {};
+    const title = notification.title || "THE SELFVERSE";
+    const body = notification.body || "You have a new appointment.";
+
+    if("Notification" in window && Notification.permission === "granted"){
+        new Notification(title, {body: body});
     }
 
-    localStorage.setItem("selfverseNotificationNumbers", JSON.stringify(numbers));
-
-    const notice = document.getElementById("recipientSaveNotice");
+    const notice = document.getElementById("dashboardNotice");
     if(notice){
-        notice.textContent = "✅ Notification numbers saved privately on this device.";
-        notice.style.display = "block";
-        setTimeout(function(){ notice.style.display = "none"; }, 3000);
-    }
-}
-
-function showCounsellorNotification(appointment){
-    if(!counsellorPortalUnlocked) return;
-
-    if("Notification" in window &&
-       Notification.permission === "granted"){
-
-        new Notification("THE SELFVERSE — New Appointment", {
-            body:
-                appointment.name +
-                " • " +
-                appointment.date +
-                " • " +
-                appointment.time
-        });
-    }
-
-    updateNotificationCount();
-}
-
-function getCurrentAppointments(){
-    if(remoteReady) return remoteAppointments;
-    return JSON.parse(localStorage.getItem("selfverseAppointments") || "[]");
-}
-
-function updateNotificationCount(){
-    const appointments = getCurrentAppointments();
-
-    const unread =
-        appointments.filter(function(item){
-            return item.status === "New";
-        }).length;
-
-    document.getElementById("notificationCount").textContent = unread;
-}
-
-function markAppointmentSeen(id){
-    const appointments = getCurrentAppointments();
-
-    const updated =
-        appointments.map(function(item){
-            if(item.id === id){
-                item.status = "Seen";
-            }
-            return item;
-        });
-
-    if(remoteReady){
-        selfverseDb.collection(APPOINTMENT_COLLECTION).doc(String(id)).update({status: "Seen"})
-            .catch(function(){
-                alert("Could not update the appointment online. Please check your internet connection.");
-            });
-        return;
-    }
-
-    localStorage.setItem("selfverseAppointments", JSON.stringify(updated));
-    renderAppointments();
-    updateNotificationCount();
-}
-
-function renderAppointments(){
-    const list =
-        document.getElementById("appointmentList");
-
-    if(!list) return;
-
-    const appointments = getCurrentAppointments();
-
-    if(!appointments.length){
-        list.innerHTML =
-            '<div class="empty-appointments">No appointment requests yet.</div>';
-        updateNotificationCount();
-        return;
-    }
-
-    const sorted =
-        appointments.slice().sort(function(a,b){
-            return b.id - a.id;
-        });
-
-    list.innerHTML =
-        sorted.map(function(item){
-
-            const statusClass =
-                item.status === "New" ? " new" : "";
-
-            return `
-                <div class="appointment-card${statusClass}">
-                    <span class="status-badge">${item.status}</span>
-                    <h3>${escapeHtml(item.name)}</h3>
-
-                    <div class="appointment-meta">
-                        <div>📅 <strong>${escapeHtml(item.date)}</strong></div>
-                        <div>🕐 <strong>${escapeHtml(formatTime(item.time))}</strong></div>
-                        <div>📞 ${escapeHtml(item.phone)}</div>
-                        <div>✉️ ${escapeHtml(item.email)}</div>
-                        <div>🌱 ${escapeHtml(item.service)}</div>
-                    </div>
-
-                    ${
-                        item.message
-                        ? `<p><strong>Message:</strong> ${escapeHtml(item.message)}</p>`
-                        : ""
-                    }
-
-                    ${
-                        item.status === "New"
-                        ? `<button class="btn btn-primary"
-                                   type="button"
-                                   onclick="markAppointmentSeen(${item.id})">
-                               ✓ Mark as Seen
-                           </button>`
-                        : ""
-                    }
-                </div>
-            `;
-        }).join("");
-
-    updateNotificationCount();
-}
-
-function formatTime(value){
-    const parts = value.split(":");
-    let hour = parseInt(parts[0],10);
-    const minutes = parts[1];
-
-    const suffix = hour >= 12 ? "PM" : "AM";
-
-    if(hour === 0) hour = 12;
-    else if(hour > 12) hour -= 12;
-
-    return String(hour).padStart(2,"0") + ":" + minutes + " " + suffix;
-}
-
-function escapeHtml(value){
-    return String(value || "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-}
-
-
-function clearAllAppointments(){
-    if(!confirm("Delete all stored appointment requests from this browser?")){
-        return;
-    }
-
-    if(remoteReady){
-        selfverseDb.collection(APPOINTMENT_COLLECTION).get()
-            .then(function(snapshot){
-                const deletes = [];
-                snapshot.forEach(function(doc){ deletes.push(doc.ref.delete()); });
-                return Promise.all(deletes);
-            })
-            .catch(function(){
-                alert("Could not clear the online appointments.");
-            });
-        return;
-    }
-
-    localStorage.removeItem("selfverseAppointments");
-    localStorage.removeItem("selfverseLastAppointment");
-    renderAppointments();
-    updateNotificationCount();
-}
-
-/* Hidden access shortcut — not shown in the public navigation */
-/* Phone access: tap the THE SELFVERSE logo 5 times quickly.
-   The login screen opens first; private information stays hidden until
-   the correct counsellor password is entered. */
-let mobileLogoTapCount = 0;
-let mobileLogoTapTimer = null;
-
-function handleMobileLogoTap(){
-    mobileLogoTapCount += 1;
-
-    clearTimeout(mobileLogoTapTimer);
-    mobileLogoTapTimer = setTimeout(function(){
-        mobileLogoTapCount = 0;
-    }, 1500);
-
-    if(mobileLogoTapCount >= 5){
-        mobileLogoTapCount = 0;
-        clearTimeout(mobileLogoTapTimer);
-        openCounsellorPortal();
-    }
-}
-
-const selfverseLogo = document.getElementById("selfverseLogo");
-if(selfverseLogo){
-    selfverseLogo.addEventListener("click", handleMobileLogoTap);
-    selfverseLogo.addEventListener("keydown", function(event){
-        if(event.key === "Enter" || event.key === " "){
-            event.preventDefault();
-            handleMobileLogoTap();
-        }
-    });
-}
-
-document.addEventListener("keydown", function(event){
-    if(event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "c"){
-        event.preventDefault();
-        openCounsellorPortal();
-    }
-
-    if(event.key === "Escape"){
-        closeCounsellorPortal();
-    }
-
-    if(event.key === "Enter" &&
-       document.activeElement &&
-       document.activeElement.id === "counsellorPassword"){
-        unlockCounsellorPortal();
+        notice.textContent = "🔔 " + body;
     }
 });
-
-/* =========================
-   FIRESTORE ONLINE APPOINTMENT SYSTEM
-========================= */
 
 function loadRemoteAppointments(showNotifications){
     if(appointmentUnsubscribe){
