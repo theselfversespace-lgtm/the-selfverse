@@ -1105,7 +1105,7 @@ footer .footer-logo{font-family:"Playfair Display",serif;font-size:28px;margin-b
             </small>
         </div>
 
-        <div id="dashboardPanel" style="display:none !important;">
+        <div id="dashboardPanel" style="display:none;">
             <div class="dashboard-header">
                 <div>
                     <span class="secure-label">COUNSELLOR ONLY</span>
@@ -1585,6 +1585,8 @@ function unlockCounsellorPortal(){
     counsellorPortalUnlocked = true;
     document.getElementById("loginPanel").style.display = "none";
     document.getElementById("dashboardPanel").style.display = "block";
+    const statusAdmin = document.getElementById("counsellorStatusAdmin");
+    if(statusAdmin) statusAdmin.classList.add("open");
     renderAppointments();
     updateNotificationCount();
     loadNotificationNumbers();
@@ -1594,6 +1596,8 @@ function lockCounsellorPortal(){
     counsellorPortalUnlocked = false;
 
     document.getElementById("dashboardPanel").style.display = "none";
+    const statusAdmin = document.getElementById("counsellorStatusAdmin");
+    if(statusAdmin) statusAdmin.classList.remove("open");
     document.getElementById("loginPanel").style.display = "block";
     document.getElementById("counsellorPassword").value = "";
 }
