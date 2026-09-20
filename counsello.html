@@ -277,5 +277,15 @@ onAuthStateChanged(auth,async user=>{
 });
 </script>
 <script src="appointment-notifications.js"></script>
+<script>
+(function(){
+function setup(){
+const b=document.getElementById("enableNotificationsBtn"),s=document.getElementById("notificationPermissionStatus");
+if(!b)return;
+function ui(){if(!("Notification"in window)){b.disabled=true;b.textContent="🔔 Notifications Not Supported";if(s)s.textContent="This browser does not support screen notifications.";return;}if(Notification.permission==="granted"){b.disabled=false;b.textContent="🔔 Send Test Notification";if(s)s.textContent="✅ Screen notifications are allowed. Click to test.";}else if(Notification.permission==="denied"){b.disabled=false;b.textContent="🔔 Notifications Blocked";if(s)s.textContent="Chrome has blocked notifications. Open the site settings icon beside the address bar and allow Notifications.";}else{b.disabled=false;b.textContent="🔔 Enable Screen Notifications";if(s)s.textContent="Click the button and choose Allow.";}}
+b.onclick=async function(e){e.preventDefault();e.stopPropagation();if(!("Notification"in window)){alert("Your browser does not support screen notifications.");return;}try{if(Notification.permission==="default"){if(s)s.textContent="⏳ Waiting for Chrome permission...";const r=await Notification.requestPermission();if(r!=="granted"){ui();return;}}if(Notification.permission==="granted"){new Notification("THE SELFVERSE",{body:"🔔 Screen notifications are working!"});if(s)s.textContent="✅ Screen notifications are working on this computer.";b.textContent="🔔 Send Test Notification";b.disabled=false;}else ui();}catch(err){console.error(err);if(s)s.textContent="⚠️ Chrome did not allow the notification request.";alert("Chrome did not allow the notification request. Check the site notification permission.");ui();}};ui();}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
+})();
+</script>
 </body>
 </html>
