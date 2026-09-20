@@ -1,38 +1,606 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Book an Appointment | THE SELFVERSE</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-<style>
-:root{--cream:#f5efe4;--paper:#fffaf2;--ink:#24312c;--muted:#68736d;--gold:#b4935a;--green:#35594d;--line:rgba(36,49,44,.13);--shadow:0 20px 60px rgba(50,42,30,.12)}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:"DM Sans",sans-serif;color:var(--ink);background:radial-gradient(circle at 10% 10%,rgba(180,147,90,.14),transparent 28%),radial-gradient(circle at 90% 80%,rgba(53,89,77,.12),transparent 30%),var(--cream)}a{text-decoration:none;color:inherit}
-.topbar{width:min(1100px,calc(100% - 30px));margin:18px auto 0;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(255,250,242,.88);border:1px solid var(--line);border-radius:999px;box-shadow:0 10px 35px rgba(50,42,30,.08);backdrop-filter:blur(12px)}
-.brand{font-family:"Playfair Display",serif;font-weight:700;letter-spacing:.08em;font-size:1.05rem}.back{color:var(--green);font-weight:600;font-size:.92rem}
-main{width:min(900px,calc(100% - 30px));margin:55px auto 70px}.intro{text-align:center;margin-bottom:30px}.eyebrow{text-transform:uppercase;letter-spacing:.2em;font-size:.72rem;color:var(--gold);font-weight:700}h1{font-family:"Playfair Display",serif;font-size:clamp(2.4rem,7vw,4.5rem);line-height:1;margin:12px 0 15px}.intro p{max-width:650px;margin:auto;color:var(--muted);line-height:1.7}
-.card{background:rgba(255,250,242,.92);border:1px solid var(--line);border-radius:30px;padding:clamp(22px,5vw,48px);box-shadow:var(--shadow)}.notice{display:flex;gap:12px;align-items:flex-start;padding:15px 17px;margin-bottom:25px;background:rgba(53,89,77,.07);border:1px solid rgba(53,89,77,.13);border-radius:16px;color:var(--green);line-height:1.55;font-size:.92rem}.notice strong{display:block;margin-bottom:2px}
-form{display:grid;gap:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:18px}label{display:block;font-weight:600;font-size:.9rem;margin-bottom:8px}input,textarea{width:100%;border:1px solid var(--line);background:#fffdf8;color:var(--ink);border-radius:14px;padding:14px 15px;font:inherit;outline:none;transition:.2s ease}input:focus,textarea:focus{border-color:rgba(180,147,90,.75);box-shadow:0 0 0 4px rgba(180,147,90,.10)}textarea{min-height:150px;resize:vertical}button{border:0;border-radius:999px;padding:15px 22px;background:var(--green);color:white;font:inherit;font-weight:700;cursor:pointer;transition:transform .2s ease,opacity .2s ease;margin-top:4px}button:hover{transform:translateY(-2px)}button:disabled{opacity:.65;cursor:wait;transform:none}.message{display:none;padding:15px 17px;border-radius:14px;line-height:1.55;font-size:.92rem}.message.success{display:block;background:rgba(53,89,77,.09);color:var(--green);border:1px solid rgba(53,89,77,.16)}.message.error{display:block;background:rgba(150,55,55,.08);color:#8a3030;border:1px solid rgba(150,55,55,.16)}footer{text-align:center;color:var(--muted);font-size:.82rem;padding:0 20px 35px}@media(max-width:650px){.row{grid-template-columns:1fr}.topbar{margin-top:10px}main{margin-top:38px}.card{border-radius:22px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Book an Appointment — THE SELFVERSE</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f5efe4, #e8dfd0);
+      color: #29261f;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 92%;
+      max-width: 700px;
+      margin: 40px auto;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.96);
+      padding: 35px;
+      border-radius: 20px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.12);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 30px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #6c665d;
+      font-size: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid #d5cec2;
+      border-radius: 10px;
+      font-size: 15px;
+      background: #fff;
+      color: #29261f;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #7b6b4f;
+      box-shadow: 0 0 0 2px rgba(123,107,79,0.12);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .time-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .time-btn {
+      padding: 12px 8px;
+      border: 1px solid #cfc5b5;
+      background: #faf7f1;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+
+    .time-btn:hover {
+      background: #eee6d9;
+    }
+
+    .time-btn.selected {
+      background: #29261f;
+      color: white;
+      border-color: #29261f;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      background: #29261f;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .submit-btn:hover {
+      background: #4a443a;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #message {
+      margin-top: 20px;
+      padding: 13px;
+      border-radius: 9px;
+      display: none;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .success {
+      display: block !important;
+      background: #e5f4e8;
+      color: #216b32;
+    }
+
+    .error {
+      display: block !important;
+      background: #f9e1e1;
+      color: #9b2929;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: #625744;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        width: 95%;
+        margin: 20px auto;
+      }
+
+      .card {
+        padding: 25px 18px;
+      }
+
+      .brand {
+        font-size: 25px;
+      }
+
+      .time-buttons {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
 </head>
+
 <body>
-<header class="topbar"><a class="brand" href="index.html">THE SELFVERSE</a><a class="back" href="index.html">← Back to website</a></header>
-<main>
-<section class="intro"><div class="eyebrow">A private first step</div><h1>Book an Appointment</h1><p>Share a few details about yourself and what you are going through. Your request will be sent directly to THE SELFVERSE's secure Firestore database.</p></section>
-<section class="card">
-<div class="notice"><div>✦</div><div><strong>Available hours: 9:00 AM – 7:00 PM</strong>Please enter your details accurately so the counsellor can review your request.</div></div>
-<form id="appointmentForm">
-<div class="row"><div><label for="name">Full Name</label><input id="name" name="name" type="text" autocomplete="name" required></div><div><label for="phone">Phone Number</label><input id="phone" name="phone" type="tel" autocomplete="tel" required></div></div>
-<div><label for="email">Email ID</label><input id="email" name="email" type="email" autocomplete="email" required></div>
-<div><label for="problem">What are you going through?</label><textarea id="problem" name="problem" required placeholder="You can briefly tell us what you would like support with..."></textarea></div>
-<div id="message" class="message" role="status" aria-live="polite"></div><button id="submitBtn" type="submit">Send Appointment Request</button>
-</form></section></main>
-<footer>© <span id="year"></span> THE SELFVERSE · A space to go inward and grow forward.</footer>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-const firebaseConfig={apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",authDomain:"the-selfverse-5f579.firebaseapp.com",projectId:"the-selfverse-5f579",storageBucket:"the-selfverse-5f579.firebasestorage.app",messagingSenderId:"1023879103176",appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"};
-const app=initializeApp(firebaseConfig);const db=getFirestore(app);const form=document.getElementById("appointmentForm"),submitBtn=document.getElementById("submitBtn"),message=document.getElementById("message");document.getElementById("year").textContent=new Date().getFullYear();
-form.addEventListener("submit",async e=>{e.preventDefault();message.className="message";message.textContent="";const name=document.getElementById("name").value.trim(),phone=document.getElementById("phone").value.trim(),email=document.getElementById("email").value.trim(),problem=document.getElementById("problem").value.trim();if(!name||!phone||!email||!problem){message.className="message error";message.textContent="Please fill in all the required fields.";return}submitBtn.disabled=true;submitBtn.textContent="Sending...";try{await addDoc(collection(db,"appointments"),{name,phone,email,problem,createdAt:new Date().toISOString()});form.reset();message.className="message success";message.textContent="Your appointment request has been sent successfully. The counsellor can now review it."}catch(error){console.error("Appointment submission error:",error);message.className="message error";message.textContent="The appointment could not be sent right now. Please check your internet connection and try again."}finally{submitBtn.disabled=false;submitBtn.textContent="Send Appointment Request"}});
-</script>
-</body></html>
+
+  <div class="container">
+    <div class="card">
+
+      <div class="brand">THE SELFVERSE</div>
+
+      <div class="subtitle">
+        Book Your Counselling Appointment
+      </div>
+
+      <form id="appointmentForm">
+
+        <!-- NAME -->
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input
+            type="text"
+            id="name"
+            placeholder="Enter your full name"
+            required
+          >
+        </div>
+
+        <!-- PHONE -->
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input
+            type="tel"
+            id="phone"
+            placeholder="Enter your phone number"
+            required
+          >
+        </div>
+
+        <!-- EMAIL -->
+        <div class="form-group">
+          <label for="email">Email ID</label>
+          <input
+            type="email"
+            id="email"
+            placeholder="Enter your email"
+            required
+          >
+        </div>
+
+        <!-- COUNSELLING TYPE -->
+        <div class="form-group">
+          <label for="service">Counselling Type</label>
+
+          <select id="service" required>
+            <option value="">Select counselling type</option>
+            <option value="Individual Counselling">
+              Individual Counselling
+            </option>
+            <option value="Student Counselling">
+              Student Counselling
+            </option>
+            <option value="Relationship Counselling">
+              Relationship Counselling
+            </option>
+            <option value="Stress Management">
+              Stress Management
+            </option>
+            <option value="Confidence Building">
+              Confidence Building
+            </option>
+            <option value="Career Guidance">
+              Career Guidance
+            </option>
+            <option value="Other">
+              Other
+            </option>
+          </select>
+        </div>
+
+        <!-- DATE -->
+        <div class="form-group">
+          <label for="appointmentDate">Appointment Date</label>
+
+          <input
+            type="date"
+            id="appointmentDate"
+            required
+          >
+        </div>
+
+        <!-- TIME -->
+        <div class="form-group">
+
+          <label>Appointment Time</label>
+
+          <div class="time-buttons" id="timeButtons">
+
+            <button type="button" class="time-btn" data-time="09:00 AM">
+              09:00 AM
+            </button>
+
+            <button type="button" class="time-btn" data-time="09:30 AM">
+              09:30 AM
+            </button>
+
+            <button type="button" class="time-btn" data-time="10:00 AM">
+              10:00 AM
+            </button>
+
+            <button type="button" class="time-btn" data-time="10:30 AM">
+              10:30 AM
+            </button>
+
+            <button type="button" class="time-btn" data-time="11:00 AM">
+              11:00 AM
+            </button>
+
+            <button type="button" class="time-btn" data-time="11:30 AM">
+              11:30 AM
+            </button>
+
+            <button type="button" class="time-btn" data-time="12:00 PM">
+              12:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="12:30 PM">
+              12:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="01:00 PM">
+              01:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="01:30 PM">
+              01:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="02:00 PM">
+              02:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="02:30 PM">
+              02:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="03:00 PM">
+              03:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="03:30 PM">
+              03:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="04:00 PM">
+              04:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="04:30 PM">
+              04:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="05:00 PM">
+              05:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="05:30 PM">
+              05:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="06:00 PM">
+              06:00 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="06:30 PM">
+              06:30 PM
+            </button>
+
+            <button type="button" class="time-btn" data-time="07:00 PM">
+              07:00 PM
+            </button>
+
+          </div>
+
+          <input
+            type="hidden"
+            id="appointmentTime"
+            required
+          >
+
+        </div>
+
+        <!-- PROBLEM -->
+        <div class="form-group">
+
+          <label for="problem">
+            Tell us briefly about what you would like support with
+          </label>
+
+          <textarea
+            id="problem"
+            placeholder="Write your concern here..."
+            required
+          ></textarea>
+
+        </div>
+
+        <!-- SUBMIT -->
+        <button
+          type="submit"
+          class="submit-btn"
+          id="submitBtn"
+        >
+          Submit Appointment
+        </button>
+
+        <div id="message"></div>
+
+      </form>
+
+      <a href="index.html" class="back-link">
+        ← Back to THE SELFVERSE
+      </a>
+
+    </div>
+  </div>
+
+
+  <!-- FIREBASE -->
+  <script type="module">
+
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
+    import {
+      getFirestore,
+      collection,
+      addDoc
+    }
+      from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdWlsexJ5AEPcwCgF9wNvyIDSVHWK0o",
+      authDomain: "the-selfverse-5f579.firebaseapp.com",
+      projectId: "the-selfverse-5f579",
+      storageBucket: "the-selfverse-5f579.firebasestorage.app",
+      messagingSenderId: "1023879103176",
+      appId: "1:1023879103176:web:1f5d7a157ada46d83bdbfd"
+    };
+
+
+    const app = initializeApp(firebaseConfig);
+
+    const db = getFirestore(app);
+
+
+    // DATE MINIMUM = TODAY
+    const dateInput =
+      document.getElementById("appointmentDate");
+
+    const today =
+      new Date().toISOString().split("T")[0];
+
+    dateInput.min = today;
+
+
+    // TIME SELECTION
+    const timeButtons =
+      document.querySelectorAll(".time-btn");
+
+    const timeInput =
+      document.getElementById("appointmentTime");
+
+
+    timeButtons.forEach(button => {
+
+      button.addEventListener("click", () => {
+
+        timeButtons.forEach(btn => {
+          btn.classList.remove("selected");
+        });
+
+        button.classList.add("selected");
+
+        timeInput.value =
+          button.dataset.time;
+
+      });
+
+    });
+
+
+    // FORM SUBMISSION
+    const form =
+      document.getElementById("appointmentForm");
+
+    const message =
+      document.getElementById("message");
+
+    const submitBtn =
+      document.getElementById("submitBtn");
+
+
+    form.addEventListener("submit", async (event) => {
+
+      event.preventDefault();
+
+
+      message.className = "";
+      message.style.display = "none";
+      message.textContent = "";
+
+
+      if (!timeInput.value) {
+
+        message.textContent =
+          "Please select an appointment time.";
+
+        message.className = "error";
+
+        return;
+      }
+
+
+      submitBtn.disabled = true;
+
+      submitBtn.textContent =
+        "Submitting...";
+
+
+      const name =
+        document.getElementById("name").value.trim();
+
+      const phone =
+        document.getElementById("phone").value.trim();
+
+      const email =
+        document.getElementById("email").value.trim();
+
+      const service =
+        document.getElementById("service").value;
+
+      const appointmentDate =
+        dateInput.value;
+
+      const appointmentTime =
+        timeInput.value;
+
+      const problem =
+        document.getElementById("problem").value.trim();
+
+
+      try {
+
+        await addDoc(
+          collection(db, "appointments"),
+          {
+
+            name: name,
+
+            phone: phone,
+
+            email: email,
+
+            service: service,
+
+            appointmentDate: appointmentDate,
+
+            appointmentTime: appointmentTime,
+
+            problem: problem,
+
+            status: "Pending",
+
+            createdAt:
+              new Date().toISOString()
+
+          }
+        );
+
+
+        message.textContent =
+          "Your appointment has been submitted successfully.";
+
+        message.className = "success";
+
+
+        form.reset();
+
+
+        timeButtons.forEach(btn => {
+          btn.classList.remove("selected");
+        });
+
+        timeInput.value = "";
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        message.textContent =
+          "Unable to submit the appointment. Please try again.";
+
+        message.className = "error";
+
+      }
+
+
+      submitBtn.disabled = false;
+
+      submitBtn.textContent =
+        "Submit Appointment";
+
+    });
+
+  </script>
+
+</body>
+</html>
