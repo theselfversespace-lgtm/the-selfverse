@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check Appointment | THE SELFVERSE</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f5efe4, #e8dfcf);
+      color: #292720;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 22px;
+      padding: 35px 28px;
+      box-shadow: 0 15px 45px rgba(0,0,0,0.12);
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: #8b7045;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+    }
+
+    .intro {
+      color: #666158;
+      line-height: 1.6;
+      margin-bottom: 25px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px;
+      border: 1px solid #d5cbb9;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 14px;
+    }
+
+    input:focus {
+      border-color: #8b7045;
+      box-shadow: 0 0 0 3px rgba(139,112,69,0.12);
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: #292720;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #message {
+      margin-top: 18px;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    .error {
+      color: #b33a3a;
+    }
+
+    .success {
+      color: #2e7044;
+    }
+
+    .result {
+      display: none;
+      margin-top: 25px;
+      text-align: left;
+      border: 1px solid #e1d8c8;
+      border-radius: 16px;
+      padding: 20px;
+      background: #fbf9f5;
+    }
+
+    .result h2 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 21px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 12px 0;
+      border-bottom: 1px solid #e8e1d6;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #756f65;
+      font-size: 14px;
+    }
+
+    .value {
+      font-weight: bold;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+
+    .pending {
+      background: #fff1c9;
+      color: #806000;
+    }
+
+    .confirmed {
+      background: #dff3e5;
+      color: #21643a;
+    }
+
+    .footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #817b71;
+    }
+
+    .back {
+      display: inline-block;
+      margin-top: 18px;
+      color: #8b7045;
+      text-decoration: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="logo">THE SELFVERSE</div>
+
+    <h1>Check Appointment</h1>
+
+    <p class="intro">
+      Enter your Appointment ID below to check the current status of your counselling appointment.
+    </p>
+
+    <input
+      type="text"
+      id="appointmentId"
+      placeholder="Enter your Appointment ID"
+      autocomplete="off"
+    >
+
+    <button id="checkBtn">Check Appointment</button>
+
+    <div id="message"></div>
+
+    <div class="result" id="result">
+      <h2>Appointment Details</h2>
+
+      <div class="row">
+        <span class="label">Appointment ID</span>
+        <span class="value" id="showId"></span>
+      </div>
+
+      <div class="row">
+        <span class="label">Counselling Type</span>
+        <span class="value" id="showService"></span>
+      </div>
+
+      <div class="row">
+        <span class="label">Date</span>
+        <span class="value" id="showDate"></span>
+      </div>
+
+      <div class="row">
+        <span class="label">Time</span>
+        <span class="value" id="showTime"></span>
+      </div>
+
+      <div class="row">
+        <span class="label">Status</span>
+        <span class="value">
+          <span class="status" id="showStatus"></span>
+        </span>
+      </div>
+    </div>
+
+    <a class="back" href="appointment.html">← Back to Appointment</a>
+
+    <div class="footer">
+      Your private appointment details are not displayed on this page.
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdWlsexJQ5AEPcwCgF9wNvyIDSVHWK0o",
+      authDomain: "the-selfverse-5f579.firebaseapp.com",
+      projectId: "the-selfverse-5f579",
+      storageBucket: "the-selfverse-5f579.firebasestorage.app",
+      messagingSenderId: "1023879103176",
+      appId: "1:1023879103176:web:1f5d7a157ada46d83bdbfd"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const appointmentIdInput = document.getElementById("appointmentId");
+    const checkBtn = document.getElementById("checkBtn");
+    const message = document.getElementById("message");
+    const result = document.getElementById("result");
+
+    const showId = document.getElementById("showId");
+    const showService = document.getElementById("showService");
+    const showDate = document.getElementById("showDate");
+    const showTime = document.getElementById("showTime");
+    const showStatus = document.getElementById("showStatus");
+
+    function setMessage(text, type = "") {
+      message.textContent = text;
+      message.className = type;
+    }
+
+    function displayStatus(status) {
+      const cleanStatus = String(status || "Pending");
+      showStatus.textContent = cleanStatus;
+
+      showStatus.className = "status";
+
+      if (cleanStatus.toLowerCase() === "confirmed") {
+        showStatus.classList.add("confirmed");
+      } else {
+        showStatus.classList.add("pending");
+      }
+    }
+
+    async function checkAppointment() {
+      const id = appointmentIdInput.value.trim();
+
+      result.style.display = "none";
+      setMessage("");
+
+      if (!id) {
+        setMessage("Please enter your Appointment ID.", "error");
+        return;
+      }
+
+      checkBtn.disabled = true;
+      checkBtn.textContent = "Checking...";
+
+      try {
+        const appointmentRef = doc(db, "appointmentStatus", id);
+        const snapshot = await getDoc(appointmentRef);
+
+        if (!snapshot.exists()) {
+          setMessage(
+            "Appointment not found. Please check the Appointment ID and try again.",
+            "error"
+          );
+          return;
+        }
+
+        const data = snapshot.data();
+
+        showId.textContent = data.appointmentId || id;
+        showService.textContent = data.service || "Not specified";
+        showDate.textContent = data.appointmentDate || "Not specified";
+        showTime.textContent = data.appointmentTime || "Not specified";
+
+        displayStatus(data.status || "Pending");
+
+        result.style.display = "block";
+        setMessage("Appointment found.", "success");
+
+      } catch (error) {
+        console.error(error);
+        setMessage(
+          "Unable to check the appointment right now. Please try again.",
+          "error"
+        );
+      } finally {
+        checkBtn.disabled = false;
+        checkBtn.textContent = "Check Appointment";
+      }
+    }
+
+    checkBtn.addEventListener("click", checkAppointment);
+
+    appointmentIdInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        checkAppointment();
+      }
+    });
+  </script>
+
+</body>
+</html>
