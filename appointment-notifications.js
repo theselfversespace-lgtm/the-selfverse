@@ -1,26 +1,32 @@
 /* =========================================================
-   THE SELFVERSE - NEW APPOINTMENT NOTIFICATIONS
+   THE SELFVERSE — NEW APPOINTMENT NOTIFICATIONS
+   Firebase 12.19.0 compatible
    ========================================================= */
 
 (function () {
   "use strict";
 
   const CHECK_EVERY_MS = 15000;
-  const COLLECTION = "appointments";
+  const FIREBASE_VERSION = "12.19.0";
+  const COLLECTION_NAME = "appointments";
 
-  let knownIds = new Set();
+  let db = null;
+  let knownAppointmentIds = new Set();
   let initialized = false;
   let timer = null;
 
-  /* =========================
-     CREATE NOTIFICATION STYLE
-  ========================= */
+  /* ---------- Small helper ---------- */
+
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /* ---------- Add notification styling ---------- */
 
   function addStyles() {
     if (document.getElementById("selfverseNotificationStyles")) return;
 
     const style = document.createElement("style");
-
     style.id = "selfverseNotificationStyles";
 
     style.textContent = `
@@ -28,254 +34,255 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        z-index: 99999;
-        width: min(420px, calc(100vw - 40px));
-        background: #fffaf0;
-        border: 1px solid #d7b56d;
-        border-left: 6px solid #b88a35;
+        width: min(380px, calc(100vw - 40px));
+        background: #1f2a24;
+        color: white;
+        padding: 18px;
         border-radius: 16px;
-        box-shadow: 0 12px 35px rgba(0,0,0,.18);
-        padding: 16px 18px;
+        box-shadow: 0 12px 35px rgba(0,0,0,.28);
+        z-index: 999999;
         display: none;
         font-family: Arial, sans-serif;
+        border: 1px solid rgba(255,255,255,.15);
       }
 
       #selfverseNewAppointmentNotice.show {
         display: block;
-        animation: selfverseNoticeIn .25s ease;
-      }
-
-      #selfverseNewAppointmentNotice .title {
-        font-size: 17px;
-        font-weight: 800;
-        color: #30281f;
-        margin-bottom: 6px;
-      }
-
-      #selfverseNewAppointmentNotice .text {
-        font-size: 14px;
-        color: #655b4f;
-        line-height: 1.45;
-      }
-
-      #selfverseNewAppointmentNotice .actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
-      }
-
-      #selfverseNewAppointmentNotice button {
-        border: 0;
-        border-radius: 10px;
-        padding: 9px 13px;
-        cursor: pointer;
-        font-weight: 700;
-      }
-
-      #selfverseViewAppointments {
-        background: #b88a35;
-        color: white;
-      }
-
-      #selfverseCloseNotice {
-        background: #eee7da;
-        color: #40372e;
+        animation: selfverseNoticeIn .35s ease;
       }
 
       @keyframes selfverseNoticeIn {
         from {
           opacity: 0;
-          transform: translateY(-10px);
+          transform: translateY(-15px);
         }
-
         to {
           opacity: 1;
           transform: translateY(0);
         }
+      }
+
+      #selfverseNewAppointmentNotice .notice-title {
+        font-size: 19px;
+        font-weight: 700;
+        margin-bottom: 7px;
+      }
+
+      #selfverseNewAppointmentNotice .notice-text {
+        font-size: 14px;
+        opacity: .9;
+        margin-bottom: 14px;
+        line-height: 1.5;
+      }
+
+      #selfverseNewAppointmentNotice button {
+        border: 0;
+        padding: 9px 13px;
+        border-radius: 9px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-right: 7px;
+      }
+
+      #selfverseViewAppointments {
+        background: #d8b56d;
+        color: #172019;
+      }
+
+      #selfverseCloseNotice {
+        background: rgba(255,255,255,.12);
+        color: white;
+      }
+
+      .selfverse-new-appointment {
+        border: 2px solid #d8b56d !important;
+        position: relative;
+      }
+
+      .selfverse-new-badge {
+        display: inline-block;
+        background: #d8b56d;
+        color: #172019;
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 800;
+        margin-bottom: 8px;
       }
     `;
 
     document.head.appendChild(style);
   }
 
+  /* ---------- Create notification banner ---------- */
 
-  /* =========================
-     CREATE NOTIFICATION BOX
-  ========================= */
+  function createBanner() {
+    if (document.getElementById("selfverseNewAppointmentNotice")) return;
 
-  function createNotice() {
+    const banner = document.createElement("div");
+    banner.id = "selfverseNewAppointmentNotice";
 
-    if (document.getElementById("selfverseNewAppointmentNotice")) {
-      return;
-    }
-
-    const notice = document.createElement("div");
-
-    notice.id = "selfverseNewAppointmentNotice";
-
-    notice.innerHTML = `
-      <div class="title">
+    banner.innerHTML = `
+      <div class="notice-title">
         🔔 New appointment received
       </div>
 
-      <div class="text" id="selfverseNoticeText">
-        A new appointment has been submitted.
+      <div class="notice-text" id="selfverseNoticeText">
+        A new appointment has been received.
       </div>
 
-      <div class="actions">
+      <button id="selfverseViewAppointments">
+        View Appointments
+      </button>
 
-        <button id="selfverseViewAppointments">
-          View Appointments
-        </button>
-
-        <button id="selfverseCloseNotice">
-          Close
-        </button>
-
-      </div>
+      <button id="selfverseCloseNotice">
+        Close
+      </button>
     `;
 
-    document.body.appendChild(notice);
+    document.body.appendChild(banner);
 
+    document
+      .getElementById("selfverseViewAppointments")
+      .addEventListener("click", function () {
+        banner.classList.remove("show");
 
-    /* Close button */
+        const appointmentSection =
+          document.getElementById("appointments");
 
-    document.getElementById(
-      "selfverseCloseNotice"
-    ).onclick = function () {
+        if (appointmentSection) {
+          appointmentSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
+      });
 
-      notice.classList.remove("show");
-
-    };
-
-
-    /* View appointments button */
-
-    document.getElementById(
-      "selfverseViewAppointments"
-    ).onclick = function () {
-
-      notice.classList.remove("show");
-
-      const target =
-        document.getElementById("appointments") ||
-        document.getElementById("appointmentList") ||
-        document.querySelector("[id*='appointment']");
-
-      if (target) {
-
-        target.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
-
-      } else {
-
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: "smooth"
-        });
-
-      }
-
-    };
-
+    document
+      .getElementById("selfverseCloseNotice")
+      .addEventListener("click", function () {
+        banner.classList.remove("show");
+      });
   }
 
-
-  /* =========================
-     NOTIFICATION SOUND
-  ========================= */
+  /* ---------- Sound ---------- */
 
   function playSound() {
-
     try {
-
       const AudioContext =
-        window.AudioContext ||
-        window.webkitAudioContext;
+        window.AudioContext || window.webkitAudioContext;
 
       if (!AudioContext) return;
 
       const audio = new AudioContext();
 
-      const oscillator =
-        audio.createOscillator();
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
 
-      const gain =
-        audio.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(
+        880,
+        audio.currentTime
+      );
 
-      oscillator.frequency.value = 880;
+      gain.gain.setValueAtTime(
+        0.0001,
+        audio.currentTime
+      );
 
-      gain.gain.value = 0.04;
+      gain.gain.exponentialRampToValueAtTime(
+        0.18,
+        audio.currentTime + 0.02
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audio.currentTime + 0.35
+      );
 
       oscillator.connect(gain);
-
       gain.connect(audio.destination);
 
       oscillator.start();
 
-      oscillator.stop(
-        audio.currentTime + 0.2
-      );
-
-    } catch (error) {
-
+      oscillator.stop(audio.currentTime + 0.4);
+    } catch (e) {
       console.log(
-        "Notification sound unavailable."
+        "THE SELFVERSE notification sound unavailable."
+      );
+    }
+  }
+
+  /* ---------- Browser notification ---------- */
+
+  function browserNotification(count) {
+    try {
+      if (!("Notification" in window)) return;
+
+      if (Notification.permission === "granted") {
+        new Notification(
+          "THE SELFVERSE — New Appointment",
+          {
+            body:
+              count === 1
+                ? "You have received 1 new appointment."
+                : `You have received ${count} new appointments.`,
+            icon: ""
+          }
+        );
+      }
+    } catch (e) {
+      console.log(
+        "THE SELFVERSE browser notification unavailable."
+      );
+    }
+  }
+
+  /* ---------- Highlight new appointment ---------- */
+
+  function highlightNewAppointments(ids) {
+    ids.forEach(function (id) {
+      const possibleElements = document.querySelectorAll(
+        ".appointment"
       );
 
-    }
+      possibleElements.forEach(function (element) {
+        if (
+          element.dataset &&
+          element.dataset.appointmentId === id
+        ) {
+          if (
+            !element.querySelector(
+              ".selfverse-new-badge"
+            )
+          ) {
+            const badge = document.createElement("div");
 
+            badge.className =
+              "selfverse-new-badge";
+
+            badge.textContent = "🆕 NEW";
+
+            element.insertBefore(
+              badge,
+              element.firstChild
+            );
+          }
+
+          element.classList.add(
+            "selfverse-new-appointment"
+          );
+        }
+      });
+    });
   }
 
+  /* ---------- Show notification ---------- */
 
-  /* =========================
-     BROWSER NOTIFICATION
-  ========================= */
+  function showNotification(count) {
+    createBanner();
 
-  function browserNotification(appointments) {
-
-    if (!("Notification" in window)) {
-      return;
-    }
-
-    if (Notification.permission !== "granted") {
-      return;
-    }
-
-    const first =
-      appointments[0] || {};
-
-    const extra =
-      appointments.length > 1
-        ? " +" + (appointments.length - 1) + " more"
-        : "";
-
-    new Notification(
-      "THE SELFVERSE - New Appointment",
-      {
-        body:
-          (first.name || "A customer") +
-          " submitted an appointment." +
-          extra
-      }
-    );
-
-  }
-
-
-  /* =========================
-     SHOW NEW APPOINTMENT
-  ========================= */
-
-  function showNewAppointment(
-    appointments
-  ) {
-
-    createNotice();
-
-    const notice =
+    const banner =
       document.getElementById(
         "selfverseNewAppointmentNotice"
       );
@@ -285,287 +292,272 @@
         "selfverseNoticeText"
       );
 
-    const first =
-      appointments[0] || {};
+    if (!banner) return;
 
-    if (appointments.length === 1) {
-
-      text.innerHTML =
-        "<strong>" +
-        escapeHTML(
-          first.name || "A customer"
-        ) +
-        "</strong> just submitted a new appointment.";
-
-    } else {
-
-      text.innerHTML =
-        "<strong>" +
-        appointments.length +
-        " new appointments</strong> have been submitted.";
-
+    if (text) {
+      text.textContent =
+        count === 1
+          ? "1 new appointment has been received."
+          : `${count} new appointments have been received.`;
     }
 
-    notice.classList.add("show");
+    banner.classList.add("show");
 
     playSound();
 
-    browserNotification(
-      appointments
-    );
-
+    browserNotification(count);
   }
 
+  /* ---------- Wait for Firebase ---------- */
 
-  /* =========================
-     SAFE HTML
-  ========================= */
-
-  function escapeHTML(value) {
-
-    return String(value ?? "")
-      .replace(
-        /[&<>"']/g,
-        function (character) {
-
-          return {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#039;"
-          }[character];
-
-        }
-      );
-
-  }
-
-
-  /* =========================
-     CHECK FIREBASE
-  ========================= */
-
-  async function checkAppointments() {
-
-    /*
-      Wait until Firebase is available.
-    */
-
-    if (
-      !window.firebase ||
-      !firebase.firestore
-    ) {
-
-      return;
-
-    }
-
-
+  async function waitForFirebase() {
     try {
-
-      const db =
-        firebase.firestore();
-
-
-      const snapshot =
-        await db
-          .collection(COLLECTION)
-          .get();
-
-
-      const appointments = [];
-
-
-      snapshot.forEach(
-        function (doc) {
-
-          appointments.push({
-
-            id: doc.id,
-
-            ...doc.data()
-
-          });
-
-        }
+      const appModule = await import(
+        `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`
       );
 
-
       /*
-        First check:
-
-        Remember all existing appointments
-        without showing notifications for them.
+       Firebase may not be initialized yet because
+       counsello.html initializes it inside a module.
+       So we wait and check repeatedly.
       */
 
-      if (!initialized) {
+      for (let i = 0; i < 60; i++) {
 
-        appointments.forEach(
-          function (appointment) {
-
-            knownIds.add(
-              appointment.id
-            );
-
-          }
-        );
-
-        initialized = true;
-
-        return;
-
-      }
-
-
-      /*
-        Find appointments that weren't
-        present during the previous check.
-      */
-
-      const newAppointments =
-        appointments.filter(
-          function (appointment) {
-
-            return !knownIds.has(
-              appointment.id
-            );
-
-          }
-        );
-
-
-      /*
-        Remember current appointments.
-      */
-
-      appointments.forEach(
-        function (appointment) {
-
-          knownIds.add(
-            appointment.id
+        if (
+          appModule.getApps &&
+          appModule.getApps().length > 0
+        ) {
+          console.log(
+            "THE SELFVERSE: Firebase detected."
           );
 
+          return appModule;
         }
-      );
 
-
-      /*
-        Show notification if something new
-        was found.
-      */
-
-      if (
-        newAppointments.length > 0
-      ) {
-
-        showNewAppointment(
-          newAppointments
-        );
-
+        await wait(500);
       }
+
+      throw new Error(
+        "Firebase app was not initialized within 30 seconds."
+      );
 
     } catch (error) {
 
-      console.warn(
-        "THE SELFVERSE notification check:",
+      console.error(
+        "THE SELFVERSE: Could not connect to Firebase.",
         error
       );
 
+      return null;
     }
-
   }
 
+  /* ---------- Check appointments ---------- */
 
-  /* =========================
-     OPTIONAL BROWSER PERMISSION
-  ========================= */
+  async function checkAppointments() {
+
+    if (!db) return;
+
+    try {
+
+      const firestoreModule = await import(
+        `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`
+      );
+
+      const {
+        collection,
+        getDocs
+      } = firestoreModule;
+
+      const snapshot = await getDocs(
+        collection(db, COLLECTION_NAME)
+      );
+
+      const currentIds = new Set();
+
+      snapshot.forEach(function (doc) {
+
+        currentIds.add(doc.id);
+
+      });
+
+      /* ------------------------------------------
+         FIRST CHECK
+
+         Existing appointments are considered known.
+         They will NOT trigger notifications.
+         ------------------------------------------ */
+
+      if (!initialized) {
+
+        knownAppointmentIds =
+          new Set(currentIds);
+
+        initialized = true;
+
+        console.log(
+          "THE SELFVERSE: Existing appointments loaded:",
+          knownAppointmentIds.size
+        );
+
+        return;
+      }
+
+      /* ------------------------------------------
+         FIND NEW APPOINTMENTS
+         ------------------------------------------ */
+
+      const newAppointments = [];
+
+      currentIds.forEach(function (id) {
+
+        if (!knownAppointmentIds.has(id)) {
+          newAppointments.push(id);
+        }
+
+      });
+
+      /* ------------------------------------------
+         NEW APPOINTMENT FOUND
+         ------------------------------------------ */
+
+      if (newAppointments.length > 0) {
+
+        console.log(
+          "THE SELFVERSE: New appointment detected:",
+          newAppointments.length
+        );
+
+        showNotification(
+          newAppointments.length
+        );
+
+        highlightNewAppointments(
+          newAppointments
+        );
+
+        newAppointments.forEach(function (id) {
+          knownAppointmentIds.add(id);
+        });
+      }
+
+      /*
+       Keep the known list synchronized.
+      */
+
+      currentIds.forEach(function (id) {
+        knownAppointmentIds.add(id);
+      });
+
+    } catch (error) {
+
+      console.error(
+        "THE SELFVERSE: Appointment check failed.",
+        error
+      );
+    }
+  }
+
+  /* ---------- Start system ---------- */
+
+  async function start() {
+
+    addStyles();
+    createBanner();
+
+    console.log(
+      "THE SELFVERSE: Starting appointment notification system..."
+    );
+
+    const appModule =
+      await waitForFirebase();
+
+    if (!appModule) return;
+
+    try {
+
+      const firestoreModule = await import(
+        `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`
+      );
+
+      db =
+        firestoreModule.getFirestore(
+          appModule.getApps()[0]
+        );
+
+      console.log(
+        "THE SELFVERSE: Notification system connected to Firebase."
+      );
+
+      /*
+       First check.
+       This loads existing appointments without
+       showing a notification.
+      */
+
+      await checkAppointments();
+
+      /*
+       Check every 15 seconds.
+      */
+
+      timer = setInterval(
+        checkAppointments,
+        CHECK_EVERY_MS
+      );
+
+      console.log(
+        "THE SELFVERSE: Checking for new appointments every 15 seconds."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "THE SELFVERSE: Notification system could not start.",
+        error
+      );
+    }
+  }
+
+  /* ---------- Enable browser notifications ---------- */
 
   window.selfverseEnableNotifications =
     async function () {
 
-      if (
-        !("Notification" in window)
-      ) {
-
-        alert(
-          "This browser does not support notifications."
-        );
-
-        return;
-
-      }
-
-
       try {
+
+        if (!("Notification" in window)) {
+          alert(
+            "Your browser does not support notifications."
+          );
+          return;
+        }
 
         const permission =
           await Notification.requestPermission();
 
-
-        if (
-          permission === "granted"
-        ) {
+        if (permission === "granted") {
 
           alert(
-            "Notifications are enabled."
+            "🔔 THE SELFVERSE notifications are enabled."
           );
 
         } else {
 
           alert(
-            "Browser notifications were not enabled."
+            "Notifications were not enabled."
           );
-
         }
 
       } catch (error) {
 
-        console.log(
-          "Notification permission error:",
-          error
-        );
+        console.error(error);
 
       }
-
     };
 
-
-  /* =========================
-     START
-  ========================= */
-
-  function start() {
-
-    addStyles();
-
-    createNotice();
-
-    /*
-      Initial check.
-    */
-
-    checkAppointments();
-
-
-    /*
-      Check every 15 seconds.
-    */
-
-    if (timer) {
-
-      clearInterval(timer);
-
-    }
-
-    timer =
-      setInterval(
-        checkAppointments,
-        CHECK_EVERY_MS
-      );
-
-  }
-
+  /* ---------- Start ---------- */
 
   if (
     document.readyState === "loading"
