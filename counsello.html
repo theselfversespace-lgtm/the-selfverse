@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>THE SELFVERSE — Counsellor Portal</title>
+<style>
+:root{--cream:#f7f2e8;--paper:#fffdf8;--ink:#29251f;--muted:#756f63;--green:#3f5b4b;--red:#a94747;--orange:#c17a25;--line:#e4dac8}
+*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font-family:Arial,sans-serif}.wrap{width:min(1000px,calc(100% - 28px));margin:auto}
+header{padding:25px 0;display:flex;justify-content:space-between;align-items:center}.brand{font-family:Georgia,serif;font-size:24px;font-weight:700}.brand span{color:#b99652}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 12px 35px rgba(40,30,15,.06);margin:20px 0}h1,h2{font-family:Georgia,serif}
+input,button{font:inherit}input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;margin:7px 0 14px;background:#fff}button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700}.primary{background:var(--green);color:#fff}.secondary{background:#eee7da;color:var(--ink)}.hidden{display:none!important}.error{color:var(--red);min-height:22px}
+.topbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.status-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.status-buttons button{border:1px solid var(--line);background:#fff}.status-label{display:inline-flex;align-items:center;gap:8px;font-weight:700;padding:8px 13px;border-radius:999px}.green{background:#e8f1e9;color:#31563e}.red{background:#f5e5e5;color:#873b3b}.orange{background:#f7ead8;color:#925c18}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.green .dot{background:#3b8b52}.red .dot{background:#b64a4a}.orange .dot{background:#d58a2c}
+.appointment{border-top:1px solid var(--line);padding:18px 0}.appointment:first-child{border-top:0}.appointment h3{margin:0 0 8px}.appointment p{margin:5px 0;color:var(--muted)}.appointment-actions{margin-top:12px}.delete-btn{background:#f5e5e5;color:#873b3b;border:1px solid #e2caca;padding:9px 13px}.delete-btn:hover{background:#efd8d8}.badge{display:inline-block;background:#eee7da;padding:4px 9px;border-radius:8px;font-size:12px}.small{color:var(--muted);font-size:13px}.success{color:#31563e}.note{background:#f4eee3;border-radius:10px;padding:12px;margin-top:15px;font-size:13px;color:var(--muted)}
+@media(max-width:650px){.panel{padding:18px}.topbar{align-items:flex-start}}
+
+.status-confirmed{background:#dff3e5;color:#21643a}
+.status-pending{background:#fff1c9;color:#806000}
+.appointment-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.confirm-btn{background:#3f5b4b;color:#fff;border:1px solid #3f5b4b;padding:9px 13px}
+.confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+
+</head>
+<body>
+<div class="wrap">
+<header><div class="brand">THE <span>SELFVERSE</span></div><button id="logoutBtn" class="secondary hidden">Log out</button></header>
+
+<section id="loginPanel" class="panel">
+<h1>Counsellor Login</h1>
+<p class="small">Sign in with the Firebase counsellor account.</p>
+<label>Email</label><input id="email" type="email" autocomplete="username" placeholder="Counsellor email">
+<label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Password">
+<button id="loginBtn" class="primary" type="button">Sign In</button>
+<p id="loginError" class="error"></p>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="panel"><div class="topbar"><div><h1>Private Counsellor Portal</h1><p class="small">View appointments and manage live availability.</p></div><span id="userEmail" class="badge"></span></div></div>
+
+<div class="panel">
+<h2>My Availability</h2>
+<div id="currentStatus" class="status-label green"><span class="dot"></span>🟢 Active</div>
+<div class="status-buttons">
+<button id="activeBtn" type="button">🟢 Active</button>
+<button id="inactiveBtn" type="button">🔴 Inactive</button>
+<button id="counsellingBtn" type="button">🟠 In Counselling</button>
+</div>
+<p id="statusMessage" class="small">Loading current status...</p>
+<div class="note">Changing the status here updates the public THE SELFVERSE website. The public page checks the live status every 30 seconds.</div>
+</div>
+
+<div class="panel">
+<div class="topbar"><h2>Appointments</h2><button id="refreshBtn" class="secondary" type="button">Refresh</button></div>
+<div id="appointments"><p class="small">Loading appointments...</p></div>
+</div>
+</section>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={
+  apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",
+  authDomain:"the-selfverse-5f579.firebaseapp.com",
+  projectId:"the-selfverse-5f579",
+  storageBucket:"the-selfverse-5f579.firebasestorage.app",
+  messagingSenderId:"1023879103176",
+  appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(),db=firebase.firestore();
+const loginPanel=document.getElementById("loginPanel"),dashboard=document.getElementById("dashboard"),logoutBtn=document.getElementById("logoutBtn"),loginError=document.getElementById("loginError"),appointmentsEl=document.getElementById("appointments"),loginBtn=document.getElementById("loginBtn");
+function getFriendlyError(e){const c=e&&e.code||"";if(c.includes("invalid-credential")||c.includes("wrong-password")||c.includes("user-not-found"))return"Incorrect email or password.";if(c.includes("invalid-email"))return"The email address is not valid.";if(c.includes("user-disabled"))return"This Firebase user account is disabled.";if(c.includes("too-many-requests"))return"Too many attempts. Please wait and try again.";if(c.includes("operation-not-allowed"))return"Email/Password sign-in is not enabled in Firebase Authentication.";return e&&e.message||"Sign in failed.";}
+loginBtn.addEventListener("click",async function(){loginBtn.disabled=true;loginBtn.textContent="Signing in...";loginError.textContent="";const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;if(!email||!password){loginError.textContent="Please enter both email and password.";loginBtn.disabled=false;loginBtn.textContent="Sign In";return;}try{await auth.signInWithEmailAndPassword(email,password);}catch(e){console.error(e);loginError.textContent=getFriendlyError(e);}finally{loginBtn.disabled=false;loginBtn.textContent="Sign In";}});
+logoutBtn.addEventListener("click",()=>auth.signOut());
+document.getElementById("refreshBtn").addEventListener("click",loadAppointments);
+function escapeHtml(v){return String(v==null?"":v).replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));}
+async function loadAppointments(){
+  appointmentsEl.innerHTML="<p class='small'>Loading appointments...</p>";
+  try{
+    const snap=await db.collection("appointments").orderBy("createdAt","desc").get();
+    if(snap.empty){
+      appointmentsEl.innerHTML="<p class='small'>No appointments yet.</p>";
+      return;
+    }
+    appointmentsEl.innerHTML="";
+    snap.forEach(d=>{
+      const a=d.data(),item=document.createElement("div");
+      item.className="appointment";
+      const status = String(a.status || "Pending");
+      const statusClass = status.toLowerCase() === "confirmed" ? "status-confirmed" : "status-pending";
+      item.innerHTML=
+        "<h3>"+escapeHtml(a.name)+"</h3>"+
+        "<p><strong>Phone:</strong> "+escapeHtml(a.phone)+"</p>"+
+        "<p><strong>Email:</strong> "+escapeHtml(a.email)+"</p>"+
+        "<p><strong>Counselling Type:</strong> "+escapeHtml(a.service || "Not specified")+"</p>"+
+        "<p><strong>Date:</strong> "+escapeHtml(a.appointmentDate || "Not specified")+"</p>"+
+        "<p><strong>Time:</strong> "+escapeHtml(a.appointmentTime || "Not specified")+"</p>"+
+        "<p><strong>Concern:</strong> "+escapeHtml(a.problem)+"</p>"+
+        "<p class='small'><strong>Submitted:</strong> "+escapeHtml(a.createdAt)+"</p>"+
+        "<span class='badge "+statusClass+"'>"+escapeHtml(status)+"</span>"+
+        "<div class='appointment-actions'>"+
+        "<button class='confirm-btn' type='button' data-confirm-id='"+escapeHtml(d.id)+"'>✅ Confirm Appointment</button>"+
+        "<button class='delete-btn' type='button' data-id='"+escapeHtml(d.id)+"'>🗑️ Delete Appointment</button>"+
+        "</div>";
+      appointmentsEl.appendChild(item);
+    });
+    appointmentsEl.querySelectorAll(".delete-btn").forEach(button=>{
+      button.addEventListener("click",()=>deleteAppointment(button.dataset.id,button));
+    });
+    appointmentsEl.querySelectorAll(".confirm-btn").forEach(button=>{
+      button.addEventListener("click",()=>confirmAppointment(button.dataset.confirmId,button));
+    });
+  }catch(e){
+    console.error(e);
+    appointmentsEl.innerHTML="<p class='error'>Could not load appointments. Check Firestore rules.</p>";
+  }
+}
+
+
+async function confirmAppointment(id,button){
+  if(!auth.currentUser){
+    alert("Please sign in again.");
+    return;
+  }
+  if(!confirm("Confirm this appointment?")) return;
+
+  button.disabled=true;
+  button.textContent="Confirming...";
+
+  try{
+    const appointmentRef=db.collection("appointments").doc(id);
+    const snap=await appointmentRef.get();
+    if(!snap.exists){
+      alert("This appointment no longer exists.");
+      await loadAppointments();
+      return;
+    }
+
+    const a=snap.data()||{};
+    await appointmentRef.update({status:"Confirmed"});
+
+    await db.collection("appointmentStatus").doc(id).set({
+      appointmentId:id,
+      appointmentDate:a.appointmentDate||"",
+      appointmentTime:a.appointmentTime||"",
+      service:a.service||"",
+      status:"Confirmed"
+    },{merge:true});
+
+    await loadAppointments();
+  }catch(e){
+    console.error("Confirm appointment error:",e);
+    button.disabled=false;
+    button.textContent="✅ Confirm Appointment";
+    alert("Could not confirm the appointment. Please check Firebase rules.");
+  }
+}
+
+async function deleteAppointment(id,button){
+  if(!auth.currentUser){
+    alert("Please sign in again.");
+    return;
+  }
+  const ok=confirm("Delete this appointment permanently? This cannot be undone.");
+  if(!ok) return;
+
+  button.disabled=true;
+  button.textContent="Deleting...";
+
+  try{
+    await db.collection("appointments").doc(id).delete();
+    await loadAppointments();
+  }catch(e){
+    console.error("Delete appointment error:",e);
+    button.disabled=false;
+    button.textContent="🗑️ Delete Appointment";
+    alert("Could not delete this appointment. Make sure the Firestore delete rule has been updated.");
+  }
+}
+const statusMap={active:{text:"🟢 Active",cls:"green"},inactive:{text:"🔴 Inactive",cls:"red"},counselling:{text:"🟠 In Counselling",cls:"orange"}};
+function renderStatus(status){const x=statusMap[status]||statusMap.active,el=document.getElementById("currentStatus");el.className="status-label "+x.cls;el.innerHTML='<span class="dot"></span>'+x.text;}
+async function getCurrentStatus(){try{const snap=await db.collection("settings").doc("availability").get(),status=snap.exists&&statusMap[snap.data().status]?snap.data().status:"active";renderStatus(status);document.getElementById("statusMessage").textContent="Current live status: "+statusMap[status].text;}catch(e){console.error(e);renderStatus("active");document.getElementById("statusMessage").textContent="Could not read the live status.";}}
+async function setAvailability(status){const buttons=[activeBtn,inactiveBtn,counsellingBtn];buttons.forEach(b=>b.disabled=true);document.getElementById("statusMessage").textContent="Updating...";try{await db.collection("settings").doc("availability").set({status:status,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});renderStatus(status);document.getElementById("statusMessage").textContent="Updated: "+statusMap[status].text;}catch(e){console.error(e);document.getElementById("statusMessage").textContent="Could not update status. Check Firestore rules.";}finally{buttons.forEach(b=>b.disabled=false);}}
+const activeBtn=document.getElementById("activeBtn"),inactiveBtn=document.getElementById("inactiveBtn"),counsellingBtn=document.getElementById("counsellingBtn");activeBtn.addEventListener("click",()=>setAvailability("active"));inactiveBtn.addEventListener("click",()=>setAvailability("inactive"));counsellingBtn.addEventListener("click",()=>setAvailability("counselling"));
+auth.onAuthStateChanged(async function(user){if(user){loginPanel.classList.add("hidden");dashboard.classList.remove("hidden");logoutBtn.classList.remove("hidden");document.getElementById("userEmail").textContent=user.email||"Signed in";await getCurrentStatus();await loadAppointments();}else{loginPanel.classList.remove("hidden");dashboard.classList.add("hidden");logoutBtn.classList.add("hidden");}});
+</script>
+</body>
+</html>
