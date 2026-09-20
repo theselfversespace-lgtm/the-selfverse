@@ -79,213 +79,29 @@ input,button{font:inherit}input{width:100%;padding:13px 14px;border:1px solid va
 </section>
 </div>
 
-<script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import {getFirestore,collection,getDocs,query,orderBy,doc,getDoc,setDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-
-const firebaseConfig={
- apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",
- authDomain:"the-selfverse-5f579.firebaseapp.com",
- projectId:"the-selfverse-5f579",
- storageBucket:"the-selfverse-5f579.firebasestorage.app",
- messagingSenderId:"1023879103176",
- appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"
-};
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
-
-const loginPanel=document.getElementById("loginPanel");
-const dashboard=document.getElementById("dashboard");
-const logoutBtn=document.getElementById("logoutBtn");
-const loginError=document.getElementById("loginError");
-const appointmentsEl=document.getElementById("appointments");
-const loginBtn=document.getElementById("loginBtn");
-
-loginBtn.addEventListener("click",async()=>{
- loginBtn.disabled=true;loginBtn.textContent="Signing in...";loginError.textContent="";
- const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;
- if(!email||!password){loginError.textContent="Please enter both email and password.";loginBtn.disabled=false;loginBtn.textContent="Sign In";return}
- try{await signInWithEmailAndPassword(auth,email,password)}
- catch(e){console.error(e);loginError.textContent=getFriendlyError(e)}
- finally{loginBtn.disabled=false;loginBtn.textContent="Sign In"}
-});
-
-function getFriendlyError(e){
- const c=e?.code||"";
- if(c.includes("invalid-credential"))return"Incorrect email or password.";
- if(c.includes("invalid-email"))return"The email address is not valid.";
- if(c.includes("user-disabled"))return"This Firebase user account is disabled.";
- if(c.includes("too-many-requests"))return"Too many attempts. Please wait and try again.";
- if(c.includes("operation-not-allowed"))return"Email/Password sign-in is not enabled in Firebase Authentication.";
- if(c.includes("network-request-failed"))return"Network error. Check your internet connection.";
- return e?.message||"Sign in failed.";
-}
-
-logoutBtn.addEventListener("click",()=>signOut(auth));
-document.getElementById("refreshBtn").addEventListener("click",loadAppointments);
-
-function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
-
-async function loadAppointments(){
- appointmentsEl.innerHTML="<p class='small'>Loading appointments...</p>";
- try{
-  const q=query(collection(db,"appointments"),orderBy("createdAt","desc")),snap=await getDocs(q);
-  if(snap.empty){appointmentsEl.innerHTML="<p class='small'>No appointments yet.</p>";return}
-  appointmentsEl.innerHTML="";
-  snap.forEach(d=>{
-   const a=d.data(),item=document.createElement("div");item.className="appointment";
-   item.innerHTML="<h3>"+escapeHtml(a.name)+"</h3><p><strong>Phone:</strong> "+escapeHtml(a.phone)+"</p><p><strong>Email:</strong> "+escapeHtml(a.email)+"</p><p><strong>Concern:</strong> "+escapeHtml(a.problem)+"</p><p class='small'><strong>Submitted:</strong> "+escapeHtml(a.createdAt)+"</p>";
-   appointmentsEl.appendChild(item);
-  });
- }catch(e){console.error(e);appointmentsEl.innerHTML="<p class='error'>Could not load appointments. Check Firestore rules.</p>"}
-}
-
-const statusMap={
- active:{text:"🟢 Active",cls:"green"},
- inactive:{text:"🔴 Inactive",cls:"red"},
- counselling:{text:"🟠 In Counselling",cls:"orange"}
-};
-
-function renderStatus(status){
- const s=statusMap[status]||statusMap.active;
- const el=document.getElementById("currentStatus");
- el.className="status-label "+s.cls;
- el.innerHTML='<span class="dot"></span>'+s.text;
-}
-
-async function getCurrentStatus(){
- try{
-  const snap=await getDoc(doc(db,"settings","availability"));
-  const status=snap.exists() && statusMap[snap.data().status] ? snap.data().status : "active";
-  renderStatus(status);
-  document.getElementById("statusMessage").textContent="Current live status: "+statusMap[status].text;
- }catch(e){
-  console.error(e);
-  renderStatus("active");
-  document.getElementById("statusMessage").textContent="Could not read the live status.";
- }
-}
-
-async function setAvailability(status){
- const buttons=[document.getElementById("activeBtn"),document.getElementById("inactiveBtn"),document.getElementById("counsellingBtn")];
- buttons.forEach(b=>b.disabled=true);
- document.getElementById("statusMessage").textContent="Updating...";
- try{
-  await setDoc(doc(db,"settings","availability"),{
-   status:status,
-   updatedAt:serverTimestamp()
-  });
-  renderStatus(status);
-  document.getElementById("statusMessage").textContent="Updated: "+statusMap[status].text;
- }catch(e){
-  console.error(e);
-  document.getElementById("statusMessage").textContent="Could not update status. Check Firestore rules.";
- }finally{buttons.forEach(b=>b.disabled=false)}
-}
-
-document.getElementById("activeBtn").addEventListener("click",()=>setAvailability("active"));
-document.getElementById("inactiveBtn").addEventListener("click",()=>setAvailability("inactive"));
-document.getElementById("counsellingBtn").addEventListener("click",()=>setAvailability("counselling"));
-
-
-/* =========================
-   SCREEN NOTIFICATIONS
-========================= */
-
-const enableNotificationsBtn = document.getElementById("enableNotificationsBtn");
-const notificationPermissionStatus = document.getElementById("notificationPermissionStatus");
-
-function updateNotificationPermissionUI(){
-  if(!enableNotificationsBtn || !notificationPermissionStatus) return;
-
-  if(!("Notification" in window)){
-    enableNotificationsBtn.disabled = true;
-    enableNotificationsBtn.textContent = "🔔 Notifications Not Supported";
-    notificationPermissionStatus.textContent = "This browser does not support screen notifications.";
-    return;
-  }
-
-  if(Notification.permission === "granted"){
-    enableNotificationsBtn.textContent = "✅ Screen Notifications Enabled";
-    notificationPermissionStatus.textContent = "New appointment alerts can now appear on your screen.";
-    enableNotificationsBtn.disabled = true;
-  }else if(Notification.permission === "denied"){
-    enableNotificationsBtn.textContent = "🔔 Notifications Blocked";
-    notificationPermissionStatus.textContent = "Notifications are blocked in Chrome. Click the lock/settings icon beside the website address to allow them.";
-    enableNotificationsBtn.disabled = false;
-  }else{
-    enableNotificationsBtn.textContent = "🔔 Enable Screen Notifications";
-    notificationPermissionStatus.textContent = "Click the button and choose Allow.";
-    enableNotificationsBtn.disabled = false;
-  }
-}
-
-async function requestScreenNotifications(event){
-  if(event) event.preventDefault();
-  if(!("Notification" in window)){
-    notificationPermissionStatus.textContent="This browser does not support screen notifications.";
-    alert("Your browser does not support screen notifications.");
-    return;
-  }
-  enableNotificationsBtn.disabled=true;
-  enableNotificationsBtn.textContent="⏳ Enabling...";
-  try{
-    let permission=Notification.permission;
-    if(permission==="default") permission=await Notification.requestPermission();
-    if(permission==="granted"){
-      notificationPermissionStatus.textContent="✅ Permission granted. Sending a test notification...";
-      try{ new Notification("THE SELFVERSE",{body:"🔔 Screen notifications are now enabled."}); }catch(e){console.error(e);}
-      enableNotificationsBtn.textContent="✅ Screen Notifications Enabled";
-      notificationPermissionStatus.textContent="✅ Screen notifications are enabled on this computer.";
-    }else if(permission==="denied"){
-      enableNotificationsBtn.textContent="🔔 Notifications Blocked";
-      notificationPermissionStatus.textContent="🔴 Chrome has blocked notifications. Click the site settings/lock icon beside the address bar and allow Notifications.";
-    }else{
-      enableNotificationsBtn.textContent="🔔 Enable Screen Notifications";
-      notificationPermissionStatus.textContent="⚠️ Permission was not granted. Click the button again and choose Allow.";
-    }
-  }catch(e){
-    console.error("Notification permission error:",e);
-    enableNotificationsBtn.textContent="🔔 Enable Screen Notifications";
-    notificationPermissionStatus.textContent="⚠️ Could not request notification permission.";
-    alert("Could not enable notifications. Please check Chrome site notification settings.");
-  }finally{
-    if(Notification.permission!=="granted") enableNotificationsBtn.disabled=false;
-  }
-}
-
-enableNotificationsBtn.addEventListener("click",requestScreenNotifications);
-updateNotificationPermissionUI();
-  }catch(e){
-    console.error("Notification permission error:",e);
-    alert("Could not enable notifications. Please check your browser notification settings.");
-  }
-}
-
-enableNotificationsBtn?.addEventListener("click", requestScreenNotifications);
-updateNotificationPermissionUI();
-
-onAuthStateChanged(auth,async user=>{
- if(user){
-  loginPanel.classList.add("hidden");dashboard.classList.remove("hidden");logoutBtn.classList.remove("hidden");
-  document.getElementById("userEmail").textContent=user.email||"Signed in";
-  await getCurrentStatus();
-  await loadAppointments();
- }else{
-  loginPanel.classList.remove("hidden");dashboard.classList.add("hidden");logoutBtn.classList.add("hidden");
- }
-});
-</script>
-<script src="appointment-notifications.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <script>
-(function(){
-function setup(){
-const b=document.getElementById("enableNotificationsBtn"),s=document.getElementById("notificationPermissionStatus");
-if(!b)return;
-function ui(){if(!("Notification"in window)){b.disabled=true;b.textContent="🔔 Notifications Not Supported";if(s)s.textContent="This browser does not support screen notifications.";return;}if(Notification.permission==="granted"){b.disabled=false;b.textContent="🔔 Send Test Notification";if(s)s.textContent="✅ Screen notifications are allowed. Click to test.";}else if(Notification.permission==="denied"){b.disabled=false;b.textContent="🔔 Notifications Blocked";if(s)s.textContent="Chrome has blocked notifications. Open the site settings icon beside the address bar and allow Notifications.";}else{b.disabled=false;b.textContent="🔔 Enable Screen Notifications";if(s)s.textContent="Click the button and choose Allow.";}}
-b.onclick=async function(e){e.preventDefault();e.stopPropagation();if(!("Notification"in window)){alert("Your browser does not support screen notifications.");return;}try{if(Notification.permission==="default"){if(s)s.textContent="⏳ Waiting for Chrome permission...";const r=await Notification.requestPermission();if(r!=="granted"){ui();return;}}if(Notification.permission==="granted"){new Notification("THE SELFVERSE",{body:"🔔 Screen notifications are working!"});if(s)s.textContent="✅ Screen notifications are working on this computer.";b.textContent="🔔 Send Test Notification";b.disabled=false;}else ui();}catch(err){console.error(err);if(s)s.textContent="⚠️ Chrome did not allow the notification request.";alert("Chrome did not allow the notification request. Check the site notification permission.");ui();}};ui();}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
-})();
+const firebaseConfig={apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",authDomain:"the-selfverse-5f579.firebaseapp.com",projectId:"the-selfverse-5f579",storageBucket:"the-selfverse-5f579.firebasestorage.app",messagingSenderId:"1023879103176",appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(),db=firebase.firestore();
+const loginPanel=document.getElementById("loginPanel"),dashboard=document.getElementById("dashboard"),logoutBtn=document.getElementById("logoutBtn"),loginError=document.getElementById("loginError"),appointmentsEl=document.getElementById("appointments"),loginBtn=document.getElementById("loginBtn");
+function getFriendlyError(e){const c=e&&e.code||"";if(c.includes("invalid-credential")||c.includes("wrong-password")||c.includes("user-not-found"))return"Incorrect email or password.";if(c.includes("invalid-email"))return"The email address is not valid.";if(c.includes("user-disabled"))return"This Firebase user account is disabled.";if(c.includes("too-many-requests"))return"Too many attempts. Please wait and try again.";if(c.includes("operation-not-allowed"))return"Email/Password sign-in is not enabled in Firebase Authentication.";return e&&e.message||"Sign in failed.";}
+loginBtn.addEventListener("click",async function(){loginBtn.disabled=true;loginBtn.textContent="Signing in...";loginError.textContent="";const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;if(!email||!password){loginError.textContent="Please enter both email and password.";loginBtn.disabled=false;loginBtn.textContent="Sign In";return;}try{await auth.signInWithEmailAndPassword(email,password);}catch(e){console.error(e);loginError.textContent=getFriendlyError(e);}finally{loginBtn.disabled=false;loginBtn.textContent="Sign In";}});
+logoutBtn.addEventListener("click",()=>auth.signOut());
+document.getElementById("refreshBtn").addEventListener("click",loadAppointments);
+function escapeHtml(v){return String(v==null?"":v).replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));}
+async function loadAppointments(){appointmentsEl.innerHTML="<p class='small'>Loading appointments...</p>";try{const snap=await db.collection("appointments").orderBy("createdAt","desc").get();if(snap.empty){appointmentsEl.innerHTML="<p class='small'>No appointments yet.</p>";return;}appointmentsEl.innerHTML="";snap.forEach(d=>{const a=d.data(),item=document.createElement("div");item.className="appointment";item.innerHTML="<h3>"+escapeHtml(a.name)+"</h3><p><strong>Phone:</strong> "+escapeHtml(a.phone)+"</p><p><strong>Email:</strong> "+escapeHtml(a.email)+"</p><p><strong>Concern:</strong> "+escapeHtml(a.problem)+"</p><p class='small'><strong>Submitted:</strong> "+escapeHtml(a.createdAt)+"</p>";appointmentsEl.appendChild(item);});}catch(e){console.error(e);appointmentsEl.innerHTML="<p class='error'>Could not load appointments. Check Firestore rules.</p>";}}
+const statusMap={active:{text:"🟢 Active",cls:"green"},inactive:{text:"🔴 Inactive",cls:"red"},counselling:{text:"🟠 In Counselling",cls:"orange"}};
+function renderStatus(status){const x=statusMap[status]||statusMap.active,el=document.getElementById("currentStatus");el.className="status-label "+x.cls;el.innerHTML='<span class="dot"></span>'+x.text;}
+async function getCurrentStatus(){try{const snap=await db.collection("settings").doc("availability").get(),status=snap.exists&&statusMap[snap.data().status]?snap.data().status:"active";renderStatus(status);document.getElementById("statusMessage").textContent="Current live status: "+statusMap[status].text;}catch(e){console.error(e);renderStatus("active");document.getElementById("statusMessage").textContent="Could not read the live status.";}}
+async function setAvailability(status){const buttons=[activeBtn,inactiveBtn,counsellingBtn];buttons.forEach(b=>b.disabled=true);document.getElementById("statusMessage").textContent="Updating...";try{await db.collection("settings").doc("availability").set({status:status,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});renderStatus(status);document.getElementById("statusMessage").textContent="Updated: "+statusMap[status].text;}catch(e){console.error(e);document.getElementById("statusMessage").textContent="Could not update status. Check Firestore rules.";}finally{buttons.forEach(b=>b.disabled=false);}}
+const activeBtn=document.getElementById("activeBtn"),inactiveBtn=document.getElementById("inactiveBtn"),counsellingBtn=document.getElementById("counsellingBtn");activeBtn.addEventListener("click",()=>setAvailability("active"));inactiveBtn.addEventListener("click",()=>setAvailability("inactive"));counsellingBtn.addEventListener("click",()=>setAvailability("counselling"));
+const enableNotificationsBtn=document.getElementById("enableNotificationsBtn"),notificationPermissionStatus=document.getElementById("notificationPermissionStatus");
+function updateNotificationPermissionUI(){if(!enableNotificationsBtn)return;if(!("Notification" in window)){enableNotificationsBtn.textContent="🔔 Notifications Not Supported";notificationPermissionStatus.textContent="This browser does not support screen notifications.";return;}if(Notification.permission==="granted"){enableNotificationsBtn.textContent="✅ Screen Notifications Enabled";notificationPermissionStatus.textContent="New appointment alerts can appear on your screen.";}else if(Notification.permission==="denied"){enableNotificationsBtn.textContent="🔔 Notifications Blocked";notificationPermissionStatus.textContent="Chrome has blocked notifications. Allow them in site settings.";}else{enableNotificationsBtn.textContent="🔔 Enable Screen Notifications";notificationPermissionStatus.textContent="Click the button and choose Allow.";}}
+enableNotificationsBtn.addEventListener("click",async function(){notificationPermissionStatus.textContent="Requesting notification permission...";try{if(!("Notification" in window)){alert("This browser does not support screen notifications.");return;}const p=await Notification.requestPermission();if(p==="granted"){new Notification("THE SELFVERSE",{body:"🔔 Screen notifications are enabled."});notificationPermissionStatus.textContent="✅ Screen notifications are enabled.";}else if(p==="denied"){notificationPermissionStatus.textContent="🔕 Notifications are blocked. Allow them in Chrome site settings.";}else{notificationPermissionStatus.textContent="Notification permission was not granted.";}updateNotificationPermissionUI();}catch(e){console.error(e);notificationPermissionStatus.textContent="⚠️ Notification error: "+e.message;alert("Notification error: "+e.message);}});updateNotificationPermissionUI();
+auth.onAuthStateChanged(async function(user){if(user){loginPanel.classList.add("hidden");dashboard.classList.remove("hidden");logoutBtn.classList.remove("hidden");document.getElementById("userEmail").textContent=user.email||"Signed in";await getCurrentStatus();await loadAppointments();}else{loginPanel.classList.remove("hidden");dashboard.classList.add("hidden");logoutBtn.classList.add("hidden");}});
 </script>
 </body>
 </html>
