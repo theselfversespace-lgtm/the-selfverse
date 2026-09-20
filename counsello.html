@@ -30,8 +30,6 @@ input,button{font:inherit}input{width:100%;padding:13px 14px;border:1px solid va
 
 <section id="dashboard" class="hidden">
 <div class="panel"><div class="topbar"><div><h1>Private Counsellor Portal</h1><p class="small">View appointments and manage live availability.</p></div><span id="userEmail" class="badge"></span></div></div>
-</div>
-
 
 <div class="panel">
 <h2>My Availability</h2>
@@ -71,7 +69,6 @@ function renderStatus(status){const x=statusMap[status]||statusMap.active,el=doc
 async function getCurrentStatus(){try{const snap=await db.collection("settings").doc("availability").get(),status=snap.exists&&statusMap[snap.data().status]?snap.data().status:"active";renderStatus(status);document.getElementById("statusMessage").textContent="Current live status: "+statusMap[status].text;}catch(e){console.error(e);renderStatus("active");document.getElementById("statusMessage").textContent="Could not read the live status.";}}
 async function setAvailability(status){const buttons=[activeBtn,inactiveBtn,counsellingBtn];buttons.forEach(b=>b.disabled=true);document.getElementById("statusMessage").textContent="Updating...";try{await db.collection("settings").doc("availability").set({status:status,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});renderStatus(status);document.getElementById("statusMessage").textContent="Updated: "+statusMap[status].text;}catch(e){console.error(e);document.getElementById("statusMessage").textContent="Could not update status. Check Firestore rules.";}finally{buttons.forEach(b=>b.disabled=false);}}
 const activeBtn=document.getElementById("activeBtn"),inactiveBtn=document.getElementById("inactiveBtn"),counsellingBtn=document.getElementById("counsellingBtn");activeBtn.addEventListener("click",()=>setAvailability("active"));inactiveBtn.addEventListener("click",()=>setAvailability("inactive"));counsellingBtn.addEventListener("click",()=>setAvailability("counselling"));
-}catch(e){console.error(e);notificationPermissionStatus.textContent="⚠️ Notification error: "+e.message;alert("Notification error: "+e.message);}});updateNotificationPermissionUI();
 auth.onAuthStateChanged(async function(user){if(user){loginPanel.classList.add("hidden");dashboard.classList.remove("hidden");logoutBtn.classList.remove("hidden");document.getElementById("userEmail").textContent=user.email||"Signed in";await getCurrentStatus();await loadAppointments();}else{loginPanel.classList.remove("hidden");dashboard.classList.add("hidden");logoutBtn.classList.add("hidden");}});
 </script>
 </body>
