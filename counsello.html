@@ -11,7 +11,7 @@ header{padding:25px 0;display:flex;justify-content:space-between;align-items:cen
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 12px 35px rgba(40,30,15,.06);margin:20px 0}h1,h2{font-family:Georgia,serif}
 input,button{font:inherit}input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;margin:7px 0 14px;background:#fff}button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700}.primary{background:var(--green);color:#fff}.secondary{background:#eee7da;color:var(--ink)}.hidden{display:none!important}.error{color:var(--red);min-height:22px}
 .topbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.status-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.status-buttons button{border:1px solid var(--line);background:#fff}.status-label{display:inline-flex;align-items:center;gap:8px;font-weight:700;padding:8px 13px;border-radius:999px}.green{background:#e8f1e9;color:#31563e}.red{background:#f5e5e5;color:#873b3b}.orange{background:#f7ead8;color:#925c18}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.green .dot{background:#3b8b52}.red .dot{background:#b64a4a}.orange .dot{background:#d58a2c}
-.appointment{border-top:1px solid var(--line);padding:18px 0}.appointment:first-child{border-top:0}.appointment h3{margin:0 0 8px}.appointment p{margin:5px 0;color:var(--muted)}.appointment-actions{margin-top:12px}.delete-btn{background:#f5e5e5;color:#873b3b;border:1px solid #e2caca;padding:9px 13px}.delete-btn:hover{background:#efd8d8}.badge{display:inline-block;background:#eee7da;padding:4px 9px;border-radius:8px;font-size:12px}.small{color:var(--muted);font-size:13px}.success{color:#31563e}.note{background:#f4eee3;border-radius:10px;padding:12px;margin-top:15px;font-size:13px;color:var(--muted)}
+.appointment{border-top:1px solid var(--line);padding:18px 0}.appointment:first-child{border-top:0}.appointment h3{margin:0 0 8px}.appointment p{margin:5px 0;color:var(--muted)}.appointment-actions{margin-top:12px;display:flex;gap:9px;flex-wrap:wrap}.delete-btn{background:#f5e5e5;color:#873b3b;border:1px solid #e2caca;padding:9px 13px}.delete-btn:hover{background:#efd8d8}.confirm-btn{background:#3f5b4b;color:#fff;padding:9px 13px}.confirm-btn:hover{background:#32493d}.status-badge{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;margin:4px 0}.status-pending{background:#f7ead8;color:#925c18}.status-confirmed{background:#e8f1e9;color:#31563e}.status-cancelled{background:#f5e5e5;color:#873b3b}.status-other{background:#eee7da;color:#514b41}.badge{display:inline-block;background:#eee7da;padding:4px 9px;border-radius:8px;font-size:12px}.small{color:var(--muted);font-size:13px}.success{color:#31563e}.note{background:#f4eee3;border-radius:10px;padding:12px;margin-top:15px;font-size:13px;color:var(--muted)}
 @media(max-width:650px){.panel{padding:18px}.topbar{align-items:flex-start}}
 </style>
 </head>
@@ -75,21 +75,71 @@ async function loadAppointments(){
     snap.forEach(d=>{
       const a=d.data(),item=document.createElement("div");
       item.className="appointment";
+
+      const status = a.status || "Pending";
+      const statusClass =
+        status === "Confirmed" ? "status-confirmed" :
+        status === "Cancelled" ? "status-cancelled" :
+        status === "Pending" ? "status-pending" : "status-other";
+
+      const confirmButton =
+        status === "Confirmed"
+          ? "<button class='confirm-btn' type='button' disabled>✅ Confirmed</button>"
+          : "<button class='confirm-btn' type='button' data-id='"+escapeHtml(d.id)+"'>✅ Confirm Appointment</button>";
+
       item.innerHTML=
         "<h3>"+escapeHtml(a.name)+"</h3>"+
+        "<span class='status-badge "+statusClass+"'>Status: "+escapeHtml(status)+"</span>"+
         "<p><strong>Phone:</strong> "+escapeHtml(a.phone)+"</p>"+
         "<p><strong>Email:</strong> "+escapeHtml(a.email)+"</p>"+
+        "<p><strong>Counselling Type:</strong> "+escapeHtml(a.service || "Not specified")+"</p>"+
+        "<p><strong>Appointment Date:</strong> "+escapeHtml(a.appointmentDate || "Not specified")+"</p>"+
+        "<p><strong>Appointment Time:</strong> "+escapeHtml(a.appointmentTime || "Not specified")+"</p>"+
         "<p><strong>Concern:</strong> "+escapeHtml(a.problem)+"</p>"+
         "<p class='small'><strong>Submitted:</strong> "+escapeHtml(a.createdAt)+"</p>"+
-        "<div class='appointment-actions'><button class='delete-btn' type='button' data-id='"+escapeHtml(d.id)+"'>🗑️ Delete Appointment</button></div>";
+        "<div class='appointment-actions'>"+
+          confirmButton+
+          "<button class='delete-btn' type='button' data-id='"+escapeHtml(d.id)+"'>🗑️ Delete Appointment</button>"+
+        "</div>";
+
       appointmentsEl.appendChild(item);
     });
+
+    appointmentsEl.querySelectorAll(".confirm-btn:not([disabled])").forEach(button=>{
+      button.addEventListener("click",()=>confirmAppointment(button.dataset.id,button));
+    });
+
     appointmentsEl.querySelectorAll(".delete-btn").forEach(button=>{
       button.addEventListener("click",()=>deleteAppointment(button.dataset.id,button));
     });
   }catch(e){
     console.error(e);
     appointmentsEl.innerHTML="<p class='error'>Could not load appointments. Check Firestore rules.</p>";
+  }
+}
+
+async function confirmAppointment(id,button){
+  if(!auth.currentUser){
+    alert("Please sign in again.");
+    return;
+  }
+
+  const ok=confirm("Confirm this appointment?");
+  if(!ok) return;
+
+  button.disabled=true;
+  button.textContent="Confirming...";
+
+  try{
+    await db.collection("appointments").doc(id).update({
+      status:"Confirmed"
+    });
+    await loadAppointments();
+  }catch(e){
+    console.error("Confirm appointment error:",e);
+    button.disabled=false;
+    button.textContent="✅ Confirm Appointment";
+    alert("Could not confirm this appointment. Please check the Firestore update rule.");
   }
 }
 
