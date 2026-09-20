@@ -11,8 +11,30 @@ header{padding:25px 0;display:flex;justify-content:space-between;align-items:cen
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 12px 35px rgba(40,30,15,.06);margin:20px 0}h1,h2{font-family:Georgia,serif}
 input,button{font:inherit}input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;margin:7px 0 14px;background:#fff}button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700}.primary{background:var(--green);color:#fff}.secondary{background:#eee7da;color:var(--ink)}.hidden{display:none!important}.error{color:var(--red);min-height:22px}
 .topbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.status-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.status-buttons button{border:1px solid var(--line);background:#fff}.status-label{display:inline-flex;align-items:center;gap:8px;font-weight:700;padding:8px 13px;border-radius:999px}.green{background:#e8f1e9;color:#31563e}.red{background:#f5e5e5;color:#873b3b}.orange{background:#f7ead8;color:#925c18}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.green .dot{background:#3b8b52}.red .dot{background:#b64a4a}.orange .dot{background:#d58a2c}
-.appointment{border-top:1px solid var(--line);padding:18px 0}.appointment:first-child{border-top:0}.appointment h3{margin:0 0 8px}.appointment p{margin:5px 0;color:var(--muted)}.appointment-actions{margin-top:12px;display:flex;gap:9px;flex-wrap:wrap}.delete-btn{background:#f5e5e5;color:#873b3b;border:1px solid #e2caca;padding:9px 13px}.delete-btn:hover{background:#efd8d8}.confirm-btn{background:#3f5b4b;color:#fff;padding:9px 13px}.confirm-btn:hover{background:#32493d}.status-badge{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;margin:4px 0}.status-pending{background:#f7ead8;color:#925c18}.status-confirmed{background:#e8f1e9;color:#31563e}.status-cancelled{background:#f5e5e5;color:#873b3b}.status-other{background:#eee7da;color:#514b41}.badge{display:inline-block;background:#eee7da;padding:4px 9px;border-radius:8px;font-size:12px}.small{color:var(--muted);font-size:13px}.success{color:#31563e}.note{background:#f4eee3;border-radius:10px;padding:12px;margin-top:15px;font-size:13px;color:var(--muted)}
+.appointment{border-top:1px solid var(--line);padding:18px 0}.appointment:first-child{border-top:0}.appointment h3{margin:0 0 8px}.appointment p{margin:5px 0;color:var(--muted)}.badge{display:inline-block;background:#eee7da;padding:4px 9px;border-radius:8px;font-size:12px}.small{color:var(--muted);font-size:13px}.success{color:#31563e}.note{background:#f4eee3;border-radius:10px;padding:12px;margin-top:15px;font-size:13px;color:var(--muted)}
 @media(max-width:650px){.panel{padding:18px}.topbar{align-items:flex-start}}
+</style>
+
+<style>
+  .notification-settings{
+    margin-top:16px;
+    padding:16px;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:#fffaf2;
+  }
+  .notification-settings h3{
+    margin:0 0 6px;
+    font-family:Georgia,serif;
+  }
+  .notification-settings p{
+    margin:6px 0 12px;
+  }
+  #notificationPermissionStatus{
+    margin-top:9px;
+    font-size:13px;
+    color:var(--muted);
+  }
 </style>
 </head>
 <body>
@@ -30,6 +52,13 @@ input,button{font:inherit}input{width:100%;padding:13px 14px;border:1px solid va
 
 <section id="dashboard" class="hidden">
 <div class="panel"><div class="topbar"><div><h1>Private Counsellor Portal</h1><p class="small">View appointments and manage live availability.</p></div><span id="userEmail" class="badge"></span></div></div>
+<div class="panel notification-settings">
+  <h3>🔔 Screen Notifications</h3>
+  <p class="small">Allow browser notifications so new appointments can pop up on your computer screen.</p>
+  <button id="enableNotificationsBtn" class="primary" type="button">🔔 Enable Screen Notifications</button>
+  <div id="notificationPermissionStatus">Checking notification permission...</div>
+</div>
+
 
 <div class="panel">
 <h2>My Availability</h2>
@@ -63,112 +92,15 @@ loginBtn.addEventListener("click",async function(){loginBtn.disabled=true;loginB
 logoutBtn.addEventListener("click",()=>auth.signOut());
 document.getElementById("refreshBtn").addEventListener("click",loadAppointments);
 function escapeHtml(v){return String(v==null?"":v).replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));}
-async function loadAppointments(){
-  appointmentsEl.innerHTML="<p class='small'>Loading appointments...</p>";
-  try{
-    const snap=await db.collection("appointments").orderBy("createdAt","desc").get();
-    if(snap.empty){
-      appointmentsEl.innerHTML="<p class='small'>No appointments yet.</p>";
-      return;
-    }
-    appointmentsEl.innerHTML="";
-    snap.forEach(d=>{
-      const a=d.data(),item=document.createElement("div");
-      item.className="appointment";
-
-      const status = a.status || "Pending";
-      const statusClass =
-        status === "Confirmed" ? "status-confirmed" :
-        status === "Cancelled" ? "status-cancelled" :
-        status === "Pending" ? "status-pending" : "status-other";
-
-      const confirmButton =
-        status === "Confirmed"
-          ? "<button class='confirm-btn' type='button' disabled>✅ Confirmed</button>"
-          : "<button class='confirm-btn' type='button' data-id='"+escapeHtml(d.id)+"'>✅ Confirm Appointment</button>";
-
-      item.innerHTML=
-        "<h3>"+escapeHtml(a.name)+"</h3>"+
-        "<span class='status-badge "+statusClass+"'>Status: "+escapeHtml(status)+"</span>"+
-        "<p><strong>Phone:</strong> "+escapeHtml(a.phone)+"</p>"+
-        "<p><strong>Email:</strong> "+escapeHtml(a.email)+"</p>"+
-        "<p><strong>Counselling Type:</strong> "+escapeHtml(a.service || "Not specified")+"</p>"+
-        "<p><strong>Appointment Date:</strong> "+escapeHtml(a.appointmentDate || "Not specified")+"</p>"+
-        "<p><strong>Appointment Time:</strong> "+escapeHtml(a.appointmentTime || "Not specified")+"</p>"+
-        "<p><strong>Concern:</strong> "+escapeHtml(a.problem)+"</p>"+
-        "<p class='small'><strong>Submitted:</strong> "+escapeHtml(a.createdAt)+"</p>"+
-        "<div class='appointment-actions'>"+
-          confirmButton+
-          "<button class='delete-btn' type='button' data-id='"+escapeHtml(d.id)+"'>🗑️ Delete Appointment</button>"+
-        "</div>";
-
-      appointmentsEl.appendChild(item);
-    });
-
-    appointmentsEl.querySelectorAll(".confirm-btn:not([disabled])").forEach(button=>{
-      button.addEventListener("click",()=>confirmAppointment(button.dataset.id,button));
-    });
-
-    appointmentsEl.querySelectorAll(".delete-btn").forEach(button=>{
-      button.addEventListener("click",()=>deleteAppointment(button.dataset.id,button));
-    });
-  }catch(e){
-    console.error(e);
-    appointmentsEl.innerHTML="<p class='error'>Could not load appointments. Check Firestore rules.</p>";
-  }
-}
-
-async function confirmAppointment(id,button){
-  if(!auth.currentUser){
-    alert("Please sign in again.");
-    return;
-  }
-
-  const ok=confirm("Confirm this appointment?");
-  if(!ok) return;
-
-  button.disabled=true;
-  button.textContent="Confirming...";
-
-  try{
-    await db.collection("appointments").doc(id).update({
-      status:"Confirmed"
-    });
-    await loadAppointments();
-  }catch(e){
-    console.error("Confirm appointment error:",e);
-    button.disabled=false;
-    button.textContent="✅ Confirm Appointment";
-    alert("Could not confirm this appointment. Please check the Firestore update rule.");
-  }
-}
-
-async function deleteAppointment(id,button){
-  if(!auth.currentUser){
-    alert("Please sign in again.");
-    return;
-  }
-  const ok=confirm("Delete this appointment permanently? This cannot be undone.");
-  if(!ok) return;
-
-  button.disabled=true;
-  button.textContent="Deleting...";
-
-  try{
-    await db.collection("appointments").doc(id).delete();
-    await loadAppointments();
-  }catch(e){
-    console.error("Delete appointment error:",e);
-    button.disabled=false;
-    button.textContent="🗑️ Delete Appointment";
-    alert("Could not delete this appointment. Make sure the Firestore delete rule has been updated.");
-  }
-}
+async function loadAppointments(){appointmentsEl.innerHTML="<p class='small'>Loading appointments...</p>";try{const snap=await db.collection("appointments").orderBy("createdAt","desc").get();if(snap.empty){appointmentsEl.innerHTML="<p class='small'>No appointments yet.</p>";return;}appointmentsEl.innerHTML="";snap.forEach(d=>{const a=d.data(),item=document.createElement("div");item.className="appointment";item.innerHTML="<h3>"+escapeHtml(a.name)+"</h3><p><strong>Phone:</strong> "+escapeHtml(a.phone)+"</p><p><strong>Email:</strong> "+escapeHtml(a.email)+"</p><p><strong>Concern:</strong> "+escapeHtml(a.problem)+"</p><p class='small'><strong>Submitted:</strong> "+escapeHtml(a.createdAt)+"</p>";appointmentsEl.appendChild(item);});}catch(e){console.error(e);appointmentsEl.innerHTML="<p class='error'>Could not load appointments. Check Firestore rules.</p>";}}
 const statusMap={active:{text:"🟢 Active",cls:"green"},inactive:{text:"🔴 Inactive",cls:"red"},counselling:{text:"🟠 In Counselling",cls:"orange"}};
 function renderStatus(status){const x=statusMap[status]||statusMap.active,el=document.getElementById("currentStatus");el.className="status-label "+x.cls;el.innerHTML='<span class="dot"></span>'+x.text;}
 async function getCurrentStatus(){try{const snap=await db.collection("settings").doc("availability").get(),status=snap.exists&&statusMap[snap.data().status]?snap.data().status:"active";renderStatus(status);document.getElementById("statusMessage").textContent="Current live status: "+statusMap[status].text;}catch(e){console.error(e);renderStatus("active");document.getElementById("statusMessage").textContent="Could not read the live status.";}}
 async function setAvailability(status){const buttons=[activeBtn,inactiveBtn,counsellingBtn];buttons.forEach(b=>b.disabled=true);document.getElementById("statusMessage").textContent="Updating...";try{await db.collection("settings").doc("availability").set({status:status,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});renderStatus(status);document.getElementById("statusMessage").textContent="Updated: "+statusMap[status].text;}catch(e){console.error(e);document.getElementById("statusMessage").textContent="Could not update status. Check Firestore rules.";}finally{buttons.forEach(b=>b.disabled=false);}}
 const activeBtn=document.getElementById("activeBtn"),inactiveBtn=document.getElementById("inactiveBtn"),counsellingBtn=document.getElementById("counsellingBtn");activeBtn.addEventListener("click",()=>setAvailability("active"));inactiveBtn.addEventListener("click",()=>setAvailability("inactive"));counsellingBtn.addEventListener("click",()=>setAvailability("counselling"));
+const enableNotificationsBtn=document.getElementById("enableNotificationsBtn"),notificationPermissionStatus=document.getElementById("notificationPermissionStatus");
+function updateNotificationPermissionUI(){if(!enableNotificationsBtn)return;if(!("Notification" in window)){enableNotificationsBtn.textContent="🔔 Notifications Not Supported";notificationPermissionStatus.textContent="This browser does not support screen notifications.";return;}if(Notification.permission==="granted"){enableNotificationsBtn.textContent="✅ Screen Notifications Enabled";notificationPermissionStatus.textContent="New appointment alerts can appear on your screen.";}else if(Notification.permission==="denied"){enableNotificationsBtn.textContent="🔔 Notifications Blocked";notificationPermissionStatus.textContent="Chrome has blocked notifications. Allow them in site settings.";}else{enableNotificationsBtn.textContent="🔔 Enable Screen Notifications";notificationPermissionStatus.textContent="Click the button and choose Allow.";}}
+enableNotificationsBtn.addEventListener("click",async function(){notificationPermissionStatus.textContent="Requesting notification permission...";try{if(!("Notification" in window)){alert("This browser does not support screen notifications.");return;}const p=await Notification.requestPermission();if(p==="granted"){new Notification("THE SELFVERSE",{body:"🔔 Screen notifications are enabled."});notificationPermissionStatus.textContent="✅ Screen notifications are enabled.";}else if(p==="denied"){notificationPermissionStatus.textContent="🔕 Notifications are blocked. Allow them in Chrome site settings.";}else{notificationPermissionStatus.textContent="Notification permission was not granted.";}updateNotificationPermissionUI();}catch(e){console.error(e);notificationPermissionStatus.textContent="⚠️ Notification error: "+e.message;alert("Notification error: "+e.message);}});updateNotificationPermissionUI();
 auth.onAuthStateChanged(async function(user){if(user){loginPanel.classList.add("hidden");dashboard.classList.remove("hidden");logoutBtn.classList.remove("hidden");document.getElementById("userEmail").textContent=user.email||"Signed in";await getCurrentStatus();await loadAppointments();}else{loginPanel.classList.remove("hidden");dashboard.classList.add("hidden");logoutBtn.classList.add("hidden");}});
 </script>
 </body>
