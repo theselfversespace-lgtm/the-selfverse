@@ -1,193 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Book an Appointment — THE SELFVERSE</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book a Session | THE SELFVERSE</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#f5efe4,#e8dfd0);color:#29261f;min-height:100vh}
-.container{width:92%;max-width:700px;margin:40px auto}
-.card{background:rgba(255,255,255,.96);padding:35px;border-radius:20px;box-shadow:0 10px 35px rgba(0,0,0,.12)}
-.brand{text-align:center;font-size:30px;font-weight:bold;letter-spacing:2px}
-.subtitle{text-align:center;margin:10px 0 30px;color:#6c665d}
-.form-group{margin-bottom:20px}
-label{display:block;margin-bottom:8px;font-weight:bold;font-size:14px}
-input,select,textarea{width:100%;padding:13px 14px;border:1px solid #d5cec2;border-radius:10px;font-size:15px;background:#fff;color:#29261f;outline:none}
-input:focus,select:focus,textarea:focus{border-color:#7b6b4f;box-shadow:0 0 0 2px rgba(123,107,79,.12)}
-textarea{min-height:120px;resize:vertical}
-.time-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.time-btn{padding:12px 8px;border:1px solid #cfc5b5;background:#faf7f1;border-radius:9px;cursor:pointer;font-size:14px}
-.time-btn.selected{background:#29261f;color:#fff;border-color:#29261f}
-.submit-btn{width:100%;padding:15px;border:0;border-radius:10px;background:#29261f;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px}
-.submit-btn:disabled{opacity:.6;cursor:not-allowed}
-#message{margin-top:20px;padding:13px;border-radius:9px;display:none;text-align:center;font-size:14px}
-.success{display:block!important;background:#e5f4e8;color:#216b32}
-.error{display:block!important;background:#f9e1e1;color:#9b2929}
-.back-link{display:block;text-align:center;margin-top:20px;color:#625744;text-decoration:none;font-size:14px}
-@media(max-width:600px){.card{padding:25px 18px}.brand{font-size:25px}.time-buttons{grid-template-columns:repeat(2,1fr)}}
+:root{--bg:#f7f3ea;--card:#fffdf8;--ink:#24221e;--muted:#69645b;--green:#365847;--gold:#a9803f;--line:#ded5c4;--ok:#e8f1e9;--bad:#f7e7e7;--blocked:#eee9df}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#f7f3ea,#eef3ec);color:var(--ink);font-family:Arial,Helvetica,sans-serif;line-height:1.6}.wrap{width:min(1050px,92%);margin:auto}.top{padding:34px 0 12px}.brand{font:700 28px Georgia,serif;letter-spacing:1px;color:var(--green)}.brand span{color:var(--gold)}h1,h2{font-family:Georgia,serif}h1{font-size:clamp(34px,5vw,58px);line-height:1.05;margin:22px 0 12px}.lead{color:var(--muted);max-width:700px}.card{background:rgba(255,253,248,.94);border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:0 16px 45px rgba(54,88,71,.08);margin:28px 0}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.field.full{grid-column:1/-1}label{display:block;font-weight:700;margin-bottom:7px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:13px;padding:13px 14px;background:#fff;font:inherit;color:var(--ink)}textarea{min-height:120px;resize:vertical}.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}.slot{border:1px solid var(--line);background:#fff;padding:14px;border-radius:14px;cursor:pointer;text-align:center;font-weight:700;transition:.2s}.slot:hover{transform:translateY(-2px)}.slot.selected{border-color:var(--green);box-shadow:0 0 0 3px rgba(54,88,71,.12)}.slot.booked,.slot.blocked{cursor:not-allowed;transform:none}.slot.booked{background:var(--bad);color:#8b3d3d}.slot.blocked{background:var(--blocked);color:#777}.slot.available{background:var(--ok);color:#31563e}.legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0;color:var(--muted);font-size:14px}.legend span{padding:6px 10px;border-radius:20px}.legend .a{background:var(--ok)}.legend .b{background:var(--bad)}.legend .c{background:var(--blocked)}button.submit{margin-top:22px;width:100%;padding:15px;border:0;border-radius:14px;background:var(--green);color:#fff;font-size:17px;font-weight:700;cursor:pointer}.notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:#f5f0e7;color:var(--muted);display:none}.success{background:var(--ok);color:#31563e}.error{background:var(--bad);color:#8b3d3d}a{color:var(--green);font-weight:700;text-decoration:none}.small{font-size:13px;color:var(--muted)}@media(max-width:700px){.field-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.slots{grid-template-columns:1fr 1fr}.card{padding:20px}}@media(max-width:430px){.slots{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="container"><div class="card">
-<div class="brand">THE SELFVERSE</div>
-<div class="subtitle">Book Your Counselling Appointment</div>
-
-<form id="appointmentForm">
-<div class="form-group">
-<label for="name">Full Name</label>
-<input id="name" type="text" placeholder="Enter your full name" required>
+<div class="wrap top"><div class="brand">THE <span>SELFVERSE</span></div><h1>Book a Session</h1><p class="lead">Choose a date and an available one-hour session. Booked and counsellor-blocked times cannot be selected.</p></div>
+<div class="wrap">
+<form id="appointmentForm" class="card">
+<div class="field-grid">
+<div class="field"><label for="name">Name</label><input id="name" required></div>
+<div class="field"><label for="phone">Phone</label><input id="phone" required inputmode="tel"></div>
+<div class="field"><label for="email">Email</label><input id="email" type="email" required></div>
+<div class="field"><label for="service">Counselling Type</label><select id="service" required><option value="">Select a service</option><option>Individual Counselling</option><option>Student Counselling</option><option>Relationship Counselling</option><option>Stress Management</option><option>Confidence Building</option><option>Career Guidance</option><option>Other</option></select></div>
+<div class="field full"><label for="date">Appointment Date</label><input id="date" type="date" required></div>
+<div class="field full"><label>One-hour appointment time</label><div class="legend"><span class="a">🟢 Available</span><span class="b">🔴 Booked</span><span class="c">⚫ Blocked by counsellor</span></div><div id="slots" class="slots"></div><input id="time" type="hidden" required></div>
+<div class="field full"><label for="problem">What would you like support with?</label><textarea id="problem" required></textarea></div>
 </div>
-
-<div class="form-group">
-<label for="phone">Phone Number</label>
-<input id="phone" type="tel" placeholder="Enter your phone number" required>
-</div>
-
-<div class="form-group">
-<label for="email">Email ID</label>
-<input id="email" type="email" placeholder="Enter your email" required>
-</div>
-
-<div class="form-group">
-<label for="service">Counselling Type</label>
-<select id="service" required>
-<option value="">Select counselling type</option>
-<option>Individual Counselling</option>
-<option>Student Counselling</option>
-<option>Relationship Counselling</option>
-<option>Stress Management</option>
-<option>Confidence Building</option>
-<option>Career Guidance</option>
-<option>Other</option>
-</select>
-</div>
-
-<div class="form-group">
-<label for="appointmentDate">Appointment Date</label>
-<input id="appointmentDate" type="date" required>
-</div>
-
-<div class="form-group">
-<label>Appointment Time</label>
-<div class="time-buttons" id="timeButtons">
-<button type="button" class="time-btn" data-time="09:00 AM">09:00 AM</button>
-<button type="button" class="time-btn" data-time="09:30 AM">09:30 AM</button>
-<button type="button" class="time-btn" data-time="10:00 AM">10:00 AM</button>
-<button type="button" class="time-btn" data-time="10:30 AM">10:30 AM</button>
-<button type="button" class="time-btn" data-time="11:00 AM">11:00 AM</button>
-<button type="button" class="time-btn" data-time="11:30 AM">11:30 AM</button>
-<button type="button" class="time-btn" data-time="12:00 PM">12:00 PM</button>
-<button type="button" class="time-btn" data-time="12:30 PM">12:30 PM</button>
-<button type="button" class="time-btn" data-time="01:00 PM">01:00 PM</button>
-<button type="button" class="time-btn" data-time="01:30 PM">01:30 PM</button>
-<button type="button" class="time-btn" data-time="02:00 PM">02:00 PM</button>
-<button type="button" class="time-btn" data-time="02:30 PM">02:30 PM</button>
-<button type="button" class="time-btn" data-time="03:00 PM">03:00 PM</button>
-<button type="button" class="time-btn" data-time="03:30 PM">03:30 PM</button>
-<button type="button" class="time-btn" data-time="04:00 PM">04:00 PM</button>
-<button type="button" class="time-btn" data-time="04:30 PM">04:30 PM</button>
-<button type="button" class="time-btn" data-time="05:00 PM">05:00 PM</button>
-<button type="button" class="time-btn" data-time="05:30 PM">05:30 PM</button>
-<button type="button" class="time-btn" data-time="06:00 PM">06:00 PM</button>
-<button type="button" class="time-btn" data-time="06:30 PM">06:30 PM</button>
-<button type="button" class="time-btn" data-time="07:00 PM">07:00 PM</button>
-</div>
-<input type="hidden" id="appointmentTime" required>
-</div>
-
-<div class="form-group">
-<label for="problem">Tell us briefly about what you would like support with</label>
-<textarea id="problem" placeholder="Write your concern here..." required></textarea>
-</div>
-
-<button type="submit" class="submit-btn" id="submitBtn">Submit Appointment</button>
-<div id="message"></div>
+<button class="submit" id="submitBtn">Book Appointment</button>
+<div id="notice" class="notice"></div>
+<p class="small">Working hours: 9:00 AM – 7:00 PM. Each appointment is one hour.</p>
 </form>
-
-<a href="index.html" class="back-link">← Back to THE SELFVERSE</a>
-</div></div>
-
+<p><a href="index.html">← Back to THE SELFVERSE</a></p>
+</div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import {getFirestore,collection,addDoc,doc,setDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-
-const firebaseConfig={
-apiKey:"AIzaSyBdWlsexJQ5AEPcwCgF9wNvyIDSVHWK0o",
-authDomain:"the-selfverse-5f579.firebaseapp.com",
-projectId:"the-selfverse-5f579",
-storageBucket:"the-selfverse-5f579.firebasestorage.app",
-messagingSenderId:"1023879103176",
-appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"
-};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-
-const dateInput=document.getElementById("appointmentDate");
-dateInput.min=new Date().toISOString().split("T")[0];
-
-const timeButtons=document.querySelectorAll(".time-btn");
-const timeInput=document.getElementById("appointmentTime");
-timeButtons.forEach(button=>{
-button.addEventListener("click",()=>{
-timeButtons.forEach(b=>b.classList.remove("selected"));
-button.classList.add("selected");
-timeInput.value=button.dataset.time;
-});
-});
-
-const form=document.getElementById("appointmentForm");
-const message=document.getElementById("message");
-const submitBtn=document.getElementById("submitBtn");
-
-form.addEventListener("submit",async e=>{
-e.preventDefault();
-message.className="";
-message.style.display="none";
-if(!timeInput.value){
-message.textContent="Please select an appointment time.";
-message.className="error";
-return;
+import {getFirestore,doc,getDoc,setDoc,runTransaction,serverTimestamp,collection} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",authDomain:"the-selfverse-5f579.firebaseapp.com",projectId:"the-selfverse-5f579",storageBucket:"the-selfverse-5f579.firebasestorage.app",messagingSenderId:"1023879103176",appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"};
+const app=initializeApp(firebaseConfig),db=getFirestore(app);
+const TIMES=[
+ {key:"09:00",label:"9:00 AM – 10:00 AM"},{key:"10:00",label:"10:00 AM – 11:00 AM"},{key:"11:00",label:"11:00 AM – 12:00 PM"},{key:"12:00",label:"12:00 PM – 1:00 PM"},{key:"13:00",label:"1:00 PM – 2:00 PM"},{key:"14:00",label:"2:00 PM – 3:00 PM"},{key:"15:00",label:"3:00 PM – 4:00 PM"},{key:"16:00",label:"4:00 PM – 5:00 PM"},{key:"17:00",label:"5:00 PM – 6:00 PM"},{key:"18:00",label:"6:00 PM – 7:00 PM"}
+];
+const dateEl=document.getElementById('date'),slotsEl=document.getElementById('slots'),timeEl=document.getElementById('time'),notice=document.getElementById('notice'),form=document.getElementById('appointmentForm'),submitBtn=document.getElementById('submitBtn');
+const localToday=new Date(); localToday.setMinutes(localToday.getMinutes()-localToday.getTimezoneOffset()); dateEl.min=localToday.toISOString().slice(0,10); dateEl.value=dateEl.min;
+function slotId(date,key){return `${date}_${key}`}
+function showNotice(msg,type=''){notice.textContent=msg;notice.className='notice '+type;notice.style.display='block'}
+function hideNotice(){notice.style.display='none'}
+function escape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+async function ensureSlots(date){
+  for(const t of TIMES){
+    const ref=doc(db,'bookingSlots',slotId(date,t.key));
+    const snap=await getDoc(ref);
+    if(!snap.exists()) await setDoc(ref,{date,time:t.key,timeLabel:t.label,status:'available',updatedAt:serverTimestamp()});
+  }
 }
-
-submitBtn.disabled=true;
-submitBtn.textContent="Submitting...";
-
-const name=document.getElementById("name").value.trim();
-const phone=document.getElementById("phone").value.trim();
-const email=document.getElementById("email").value.trim();
-const service=document.getElementById("service").value;
-const appointmentDate=dateInput.value;
-const appointmentTime=timeInput.value;
-const problem=document.getElementById("problem").value.trim();
-const createdAt=new Date().toISOString();
-
-try{
-const appointmentRef=await addDoc(collection(db,"appointments"),{
-name,phone,email,service,appointmentDate,appointmentTime,problem,status:"Pending",createdAt
-});
-
-await setDoc(doc(db,"appointmentStatus",appointmentRef.id),{
-appointmentId:appointmentRef.id,
-appointmentDate,
-appointmentTime,
-service,
-status:"Pending"
-});
-
-message.innerHTML="Your appointment has been submitted successfully.<br><br><strong>Your Appointment ID:</strong><br><span style='font-size:18px;letter-spacing:1px'>"+appointmentRef.id+"</span><br><br>Please save this ID to check your appointment status.";
-message.className="success";
-form.reset();
-timeButtons.forEach(b=>b.classList.remove("selected"));
-timeInput.value="";
-}catch(error){
-console.error(error);
-message.textContent="Unable to submit the appointment. Please try again.";
-message.className="error";
+async function loadSlots(){
+ const date=dateEl.value; if(!date)return; hideNotice(); timeEl.value='';
+ slotsEl.innerHTML='<p class="small">Loading available times...</p>';
+ try{await ensureSlots(date);const snaps=await Promise.all(TIMES.map(t=>getDoc(doc(db,'bookingSlots',slotId(date,t.key)))));slotsEl.innerHTML='';snaps.forEach((snap,i)=>{const t=TIMES[i],d=snap.data()||{},status=d.status||'available';const b=document.createElement('button');b.type='button';b.className='slot '+status;b.dataset.time=t.key;b.innerHTML=status==='available'?`🟢 ${escape(t.label)}`:status==='booked'?`🔴 ${escape(t.label)}<br><small>Booked</small>`:`⚫ ${escape(t.label)}<br><small>Unavailable</small>`;if(status==='available'){b.onclick=()=>{document.querySelectorAll('.slot').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');timeEl.value=t.key}}else b.disabled=true;slotsEl.appendChild(b)});}catch(e){console.error(e);showNotice('Could not load appointment times. Please try again.','error')}
 }
-submitBtn.disabled=false;
-submitBtn.textContent="Submit Appointment";
-});
+dateEl.addEventListener('change',loadSlots);loadSlots();
+form.addEventListener('submit',async e=>{e.preventDefault();hideNotice();const name=document.getElementById('name').value.trim(),phone=document.getElementById('phone').value.trim(),email=document.getElementById('email').value.trim(),service=document.getElementById('service').value,date=dateEl.value,time=timeEl.value,problem=document.getElementById('problem').value.trim();if(!time){showNotice('Please select an available one-hour time slot.','error');return}submitBtn.disabled=true;submitBtn.textContent='Booking...';try{
+ const slotRef=doc(db,'bookingSlots',slotId(date,time));let appointmentId='';
+ await runTransaction(db,async tx=>{const slotSnap=await tx.get(slotRef);if(!slotSnap.exists()||slotSnap.data().status!=='available')throw new Error('SLOT_TAKEN');const appointmentRef=doc(collection(db,'appointments'));appointmentId=appointmentRef.id;const label=TIMES.find(x=>x.key===time).label;tx.set(appointmentRef,{name,phone,email,problem,service,appointmentDate:date,appointmentTime:label,appointmentTimeKey:time,status:'Pending',createdAt:serverTimestamp()});tx.update(slotRef,{status:'booked',appointmentId,bookedByName:name,updatedAt:serverTimestamp()});const publicRef=doc(db,'appointmentStatus',appointmentId);tx.set(publicRef,{appointmentId,appointmentDate:date,appointmentTime:label,service,status:'Pending'});});
+ form.reset();dateEl.min=localToday.toISOString().slice(0,10);dateEl.value=date;await loadSlots();showNotice(`Appointment submitted successfully. Your Appointment ID is ${appointmentId}. Save this ID to check your status.`,'success');
+ }catch(err){console.error(err);if(err.message==='SLOT_TAKEN'){await loadSlots();showNotice('That time was just booked or blocked. Please choose another available time.','error')}else showNotice('Could not submit the appointment. Please try again.','error')}finally{submitBtn.disabled=false;submitBtn.textContent='Book Appointment'}});
 </script>
-</body>
-</html>
+</body></html>
