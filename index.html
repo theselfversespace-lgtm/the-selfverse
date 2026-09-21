@@ -18,5 +18,52 @@ section{padding:88px 7%;position:relative}.wrap{max-width:1120px;margin:auto}.se
 <section class="counsellor" id="counsellor"><div class="wrap reveal"><div class="eyebrow">Your counsellor</div><div class="counsellor-grid"><div class="counsellor-profile"><h2 class="section-title">Gavriella Vaiz</h2><p class="counsellor-role">Wellness Counsellor</p><h3 class="qualification-title">Qualifications</h3><p class="qualification-list">M.A. Wellness Counselling<br>B.Sc. Home Science Human Development Hons.</p><p class="counsellor-description">Gavriella is a wellness counsellor who believes that every person deserves a space where they can feel heard, understood, and accepted without judgment. With a warm and empathetic approach, she supports individuals in exploring their thoughts, emotions, and experiences at their own pace.</p><p class="counsellor-description">She believes that meaningful growth often begins with simply understanding ourselves a little better.</p><div class="status-box"><strong>Current availability</strong><div style="margin-top:12px"><span id="publicStatus" class="status"><span class="dot"></span>🟢 Active</span></div><small style="display:block;color:var(--m);margin-top:10px">Availability is managed privately by the counsellor.</small></div></div></div></div></section>
 <section id="contact"><div class="wrap"><div class="eyebrow">Contact</div><h2 class="section-title">Start with a conversation.</h2><p class="lead">Use the appointment page to send your details directly through the website.</p><div class="contact-grid"><div class="contact-box"><strong>Phone</strong><span>8552022693</span></div><div class="contact-box"><strong>Email</strong><span>theselfverse.space@gmail.com</span></div><div class="contact-box"><strong>Working Hours</strong><span>9:00 AM – 7:00 PM</span></div></div></div></section>
 <footer>© 2026 THE SELFVERSE. A calm space for support and growth.</footer>
+<style>
+.status.active{background:#e8f1e9;color:#31563e}
+.status.inactive{background:#f7e7e7;color:#8b3d3d}
+.status.counselling{background:#fff0d9;color:#8a5a16}
+</style>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {getFirestore,doc,getDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",
+ authDomain:"the-selfverse-5f579.firebaseapp.com",
+ projectId:"the-selfverse-5f579",
+ storageBucket:"the-selfverse-5f579.firebasestorage.app",
+ messagingSenderId:"1023879103176",
+ appId:"1:1023879103176:web:1f5d7a157ada46d83bdbfd"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+const statusMap={
+ active:{text:"🟢 Active",cls:"active"},
+ inactive:{text:"🔴 Inactive",cls:"inactive"},
+ counselling:{text:"🟠 In Counselling",cls:"counselling"}
+};
+
+async function loadPublicStatus(){
+ const el=document.getElementById("publicStatus");
+ if(!el)return;
+ try{
+   const snap=await getDoc(doc(db,"settings","availability"));
+   const value=snap.exists() && statusMap[snap.data().status]
+     ? snap.data().status : "active";
+   const s=statusMap[value];
+   el.className="status "+s.cls;
+   el.innerHTML='<span class="dot"></span>'+s.text;
+ }catch(e){
+   console.error("Availability error:",e);
+   el.className="status inactive";
+   el.innerHTML='<span class="dot"></span>🔴 Availability unavailable';
+ }
+}
+
+loadPublicStatus();
+setInterval(loadPublicStatus,30000);
+</script>
 <script>(function(){const l=document.getElementById("secretLogo");let t=0,x;l.onclick=function(){t++;clearTimeout(x);x=setTimeout(()=>t=0,1200);if(t>=5){t=0;location.href="counsello.html"}}})();const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add("show")}),{threshold:.12});document.querySelectorAll(".reveal").forEach(el=>observer.observe(el));</script>
 </body></html>
