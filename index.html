@@ -25,7 +25,7 @@ section{padding:88px 7%;position:relative}.wrap{max-width:1120px;margin:auto}.se
 </style>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import {getFirestore,doc,getDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import {getFirestore,doc,getDoc,getDocs,collection} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig={
  apiKey:"AIzaSyBdWlsexJQ5AEPcwCgFq9wNvyIDSVHWK0o",
@@ -45,13 +45,23 @@ const statusMap={
  counselling:{text:"🟠 In Counselling",cls:"counselling"}
 };
 
+const TIME_KEYS={
+ "9:00 AM – 10:00 AM":"09:00","10:00 AM – 11:00 AM":"10:00","11:00 AM – 12:00 PM":"11:00","12:00 PM – 1:00 PM":"12:00","1:00 PM – 2:00 PM":"13:00","2:00 PM – 3:00 PM":"14:00","3:00 PM – 4:00 PM":"15:00","4:00 PM – 5:00 PM":"16:00","5:00 PM – 6:00 PM":"17:00","6:00 PM – 7:00 PM":"18:00"
+};
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function isCurrentSession(a){if(!a||a.status!=="Confirmed"||a.appointmentDate!==todayKey())return false;const k=a.appointmentTimeKey||TIME_KEYS[a.appointmentTime];if(!k)return false;const [h,m]=k.split(":").map(Number);const now=new Date(),mins=now.getHours()*60+now.getMinutes();return mins>=h*60+m&&mins<h*60+m+60}
 async function loadPublicStatus(){
  const el=document.getElementById("publicStatus");
  if(!el)return;
  try{
-   const snap=await getDoc(doc(db,"settings","availability"));
-   const value=snap.exists() && statusMap[snap.data().status]
-     ? snap.data().status : "active";
+   const settings=await getDoc(doc(db,"settings","availability"));
+   const manual=settings.exists() && statusMap[settings.data().status] ? settings.data().status : "active";
+   let value=manual;
+   if(manual!=="inactive"){
+     const snap=await getDocs(collection(db,"appointmentStatus"));
+     const current=snap.docs.map(d=>d.data()).find(isCurrentSession);
+     value=current ? "counselling" : "active";
+   }
    const s=statusMap[value];
    el.className="status "+s.cls;
    el.innerHTML='<span class="dot"></span>'+s.text;
