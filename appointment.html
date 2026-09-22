@@ -99,7 +99,7 @@ textarea{min-height:120px;resize:vertical}
 
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import {getFirestore,collection,doc,runTransaction} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import {getFirestore,collection,doc,runTransaction,getDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyBdWlsexJQ5AEPcwCgF9wNvyIDSVHWK0o",
@@ -153,8 +153,8 @@ async function loadAvailability(){
   await Promise.all(Array.from(timeButtons).map(async button=>{
    const time=button.dataset.time;
    const [bookedSnap,blockedSnap]=await Promise.all([
-    db.collection("bookingSlots").doc(slotKey(date,time)).get(),
-    db.collection("blockedSlots").doc(slotKey(date,time)).get()
+    getDoc(doc(db,"bookingSlots",slotKey(date,time))),
+    getDoc(doc(db,"blockedSlots",slotKey(date,time)))
    ]);
    const unavailable=bookedSnap.exists||blockedSnap.exists||slotIsPast(date,time);
    button.disabled=unavailable;
